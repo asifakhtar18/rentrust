@@ -14,6 +14,9 @@ import { MailerModule } from './notifications/mailer/mailer.module';
 import { LocationsModule } from './locations/locations.module';
 import { PropertiesModule } from './properties/properties.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { AuditModule } from './audit/audit.module';
+import { FilesModule } from './files/files.module';
+import { VerificationModule } from './verification/verification.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -67,6 +70,8 @@ import { AppConfig } from './config/configuration';
       },
     }),
     DatabaseModule,
+    AuditModule,
+    FilesModule,
     MailerModule,
     HealthModule,
     UsersModule,
@@ -74,6 +79,7 @@ import { AppConfig } from './config/configuration';
     LocationsModule,
     PropertiesModule,
     ReviewsModule,
+    VerificationModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
