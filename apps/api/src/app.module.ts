@@ -11,6 +11,8 @@ import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MailerModule } from './notifications/mailer/mailer.module';
+import { LocationsModule } from './locations/locations.module';
+import { PropertiesModule } from './properties/properties.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -68,6 +70,8 @@ import { AppConfig } from './config/configuration';
     HealthModule,
     UsersModule,
     AuthModule,
+    LocationsModule,
+    PropertiesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
