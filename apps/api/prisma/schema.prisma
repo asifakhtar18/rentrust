@@ -1,0 +1,22 @@
+// RentTrust Prisma schema — Phase 1 bootstrap.
+// Expanded with the full domain model in Phase 2.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, pg_trgm, uuidOssp(map: "uuid-ossp")]
+}
+
+/// Placeholder model so the Prisma client generates during Phase 1.
+/// Replaced by the full domain model in Phase 2.
+model HealthMarker {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("health_markers")
+}

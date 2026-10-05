@@ -1,0 +1,6 @@
+node_modules
+dist
+.next
+coverage
+*.md
+apps/api/prisma/migrations
