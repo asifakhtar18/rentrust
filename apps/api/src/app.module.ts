@@ -17,6 +17,9 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { AuditModule } from './audit/audit.module';
 import { FilesModule } from './files/files.module';
 import { VerificationModule } from './verification/verification.module';
+import { EventsModule } from './events/events.module';
+import { QueueModule } from './queue/queue.module';
+import { TrustScoreModule } from './trust-score/trust-score.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -70,6 +73,8 @@ import { AppConfig } from './config/configuration';
       },
     }),
     DatabaseModule,
+    EventsModule,
+    QueueModule,
     AuditModule,
     FilesModule,
     MailerModule,
@@ -80,6 +85,7 @@ import { AppConfig } from './config/configuration';
     PropertiesModule,
     ReviewsModule,
     VerificationModule,
+    TrustScoreModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

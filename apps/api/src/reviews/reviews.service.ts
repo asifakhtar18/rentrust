@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, Review, ReviewAnswer, ReviewStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { PropertiesService } from '../properties/properties.service';
+import { EventBus } from '../events/event-bus';
+import { DomainEvent } from '../events/events';
 import {
   ConflictAppException,
   ForbiddenAppException,
@@ -55,6 +57,7 @@ export class ReviewsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly properties: PropertiesService,
+    private readonly events: EventBus,
   ) {}
 
   /**
@@ -262,9 +265,28 @@ export class ReviewsService {
       include: { answer: true },
     });
     const overall = review.answer ? overallForReview(review.answer) : null;
-    return this.prisma.review.update({
+    const updated = await this.prisma.review.update({
       where: { id: reviewId },
       data: { status: ReviewStatus.PUBLISHED, publishedAt: new Date(), overall },
     });
+    // Fire-and-forget: triggers async trust-score recalculation.
+    await this.events.emit(DomainEvent.REVIEW_PUBLISHED, {
+      reviewId: updated.id,
+      propertyId: updated.propertyId,
+    });
+    return updated;
+  }
+
+  /** Transition to REMOVED and emit so scores recalc without the review. */
+  async markRemoved(reviewId: string): Promise<Review> {
+    const updated = await this.prisma.review.update({
+      where: { id: reviewId },
+      data: { status: ReviewStatus.REMOVED },
+    });
+    await this.events.emit(DomainEvent.REVIEW_REMOVED, {
+      reviewId: updated.id,
+      propertyId: updated.propertyId,
+    });
+    return updated;
   }
 }

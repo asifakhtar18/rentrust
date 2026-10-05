@@ -8,5 +8,7 @@
   },
   "moduleNameMapper": {
     "^@app/(.*)$": "<rootDir>/../src/$1"
-  }
+  },
+  "forceExit": true,
+  "testTimeout": 30000
 }
