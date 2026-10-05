@@ -1,9 +1,24 @@
-// RentTrust Prisma schema — Phase 1 bootstrap.
-// Expanded with the full domain model in Phase 2.
+// =============================================================================
+// RentTrust Prisma schema
+// "Know the place before you rent it."
+//
+// Design notes:
+//  - UUID primary keys everywhere (opaque, non-enumerable).
+//  - snake_case table/column names via @map / @@map for a clean SQL surface.
+//  - created_at / updated_at on mutable entities; deleted_at for soft delete
+//    on entities that must be retained for audit/history (users, properties,
+//    reviews) rather than hard-deleted.
+//  - PostGIS geometry columns are added in a follow-up raw migration because
+//    Prisma cannot yet model `geometry(Point,4326)` directly. We keep plain
+//    lat/lng columns here for app convenience and add a generated geometry
+//    column + GiST index in migration SQL for spatial queries.
+//  - Indexes are declared against real query patterns (location, canonical
+//    name, aliases, review status/property, verification/claim status, email).
+// =============================================================================
 
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["postgresqlExtensions"]
+  previewFeatures = ["postgresqlExtensions", "fullTextSearch"]
 }
 
 datasource db {
@@ -12,11 +27,824 @@ datasource db {
   extensions = [postgis, pg_trgm, uuidOssp(map: "uuid-ossp")]
 }
 
-/// Placeholder model so the Prisma client generates during Phase 1.
-/// Replaced by the full domain model in Phase 2.
-model HealthMarker {
+// ------------------------------- Enums --------------------------------------
+
+enum UserRole {
+  USER
+  OWNER
+  MANAGER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum PropertyType {
+  APARTMENT
+  PG
+  CO_LIVING
+  HOSTEL
+  INDEPENDENT_HOUSE
+  VILLA
+  BUILDER_PROPERTY
+}
+
+enum PropertyStatus {
+  ACTIVE
+  MERGED // merged into another canonical property (duplicate resolution)
+  HIDDEN
+  ARCHIVED
+}
+
+// Role of a landlord relationship to a property (a property may have many).
+enum LandlordLinkRole {
+  OWNER
+  CO_OWNER
+}
+
+enum ManagerLinkRole {
+  PROPERTY_MANAGER
+  CARETAKER
+  SOCIETY_OFFICE
+}
+
+enum ReviewStatus {
+  DRAFT
+  PENDING_MODERATION
+  PUBLISHED
+  REJECTED
+  HIDDEN
+  UNDER_REVIEW
+  REMOVED
+}
+
+enum TenureBucket {
+  LT_3_MONTHS // < 3 months
+  M3_6 // 3-6 months
+  M6_12 // 6-12 months
+  Y1_2 // 1-2 years
+  GT_2_YEARS // 2+ years
+}
+
+enum MaintenanceResolutionBucket {
+  LT_24H // < 24 hours
+  D1_3 // 1-3 days
+  D3_7 // 3-7 days
+  GT_7D // > 7 days
+}
+
+enum DepositOutcome {
+  FULL
+  PARTIAL
+  NOT_RETURNED
+  STILL_WAITING
+}
+
+enum TriState {
+  YES
+  NO
+  MAYBE
+}
+
+enum YesNoNa {
+  YES
+  NO
+  NOT_APPLICABLE
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum VerificationEvidenceType {
+  RENTAL_AGREEMENT
+  RENT_RECEIPT
+  UTILITY_DOCUMENT
+  MANAGEMENT_VERIFICATION
+  RESIDENT_INVITATION
+  OTHER
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REVOKED
+}
+
+enum ClaimRole {
+  OWNER
+  MANAGER
+}
+
+enum ReportReason {
+  PERSONAL_INFORMATION
+  THREATS
+  HARASSMENT
+  HATE_SPEECH
+  DEFAMATION
+  DOXXING
+  SPAM
+  OFF_TOPIC
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  ACTIONED
+  DISMISSED
+}
+
+enum ModerationActionType {
+  PUBLISH
+  REJECT
+  HIDE
+  UNHIDE
+  REMOVE
+  FLAG
+  RESTORE
+  NOTE
+  APPEAL_GRANTED
+  APPEAL_DENIED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  READ
+  FAILED
+}
+
+// ------------------------------- Identity -----------------------------------
+
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  email           String     @unique
+  phone           String?    @unique
+  passwordHash    String?    @map("password_hash")
+  displayName     String?    @map("display_name")
+  roles           UserRole[] @default([USER])
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?  @map("email_verified_at")
+  phoneVerifiedAt DateTime?  @map("phone_verified_at")
+  lastLoginAt     DateTime?  @map("last_login_at")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  deletedAt       DateTime?  @map("deleted_at")
+
+  residentProfile ResidentProfile?
+  sessions        Session[]
+  reviews         Review[]
+  verifications   VerificationRequest[]
+  claims          PropertyClaim[]
+  savedProperties SavedProperty[]
+  reports         ReviewReport[]
+  moderationActs  ModerationAction[]    @relation("ModeratorActions")
+  ownerResponses  OwnerResponse[]
+  notifications   Notification[]
+  authTokens      AuthToken[]
+  auditLogs       AuditLog[]            @relation("ActorAudit")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+/// Opaque, hashed refresh-token session. Enables refresh rotation and
+/// server-side revocation (logout, "sign out everywhere").
+model Session {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  refreshTokenHash String    @map("refresh_token_hash")
+  userAgent        String?   @map("user_agent")
+  ip               String?
+  expiresAt        DateTime  @map("expires_at")
+  revokedAt        DateTime? @map("revoked_at")
+  // Links a rotated token back to the one it replaced, to detect reuse/theft.
+  replacedById     String?   @map("replaced_by_id") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Single-use tokens for email verification and password reset (hashed).
+model AuthToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  type      String // 'EMAIL_VERIFY' | 'PASSWORD_RESET'
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([expiresAt])
+  @@map("auth_tokens")
+}
+
+/// Extra, mostly-private resident data. Kept separate from User so public
+/// surfaces never accidentally join to it.
+model ResidentProfile {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  // A stable, non-identifying public handle (e.g. "Verified Resident #AB12").
+  publicAlias    String   @unique @map("public_alias")
+  currentCityId  String?  @map("current_city_id") @db.Uuid
+  marketingOptIn Boolean  @default(false) @map("marketing_opt_in")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city City? @relation(fields: [currentCityId], references: [id])
+
+  @@map("resident_profiles")
+}
+
+// ------------------------------ Geography -----------------------------------
+
+model Country {
   id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  iso2      String   @unique @db.Char(2)
   createdAt DateTime @default(now()) @map("created_at")
 
-  @@map("health_markers")
+  states State[]
+  cities City[]
+
+  @@map("countries")
+}
+
+model State {
+  id        String   @id @default(uuid()) @db.Uuid
+  countryId String   @map("country_id") @db.Uuid
+  name      String
+  code      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  country Country @relation(fields: [countryId], references: [id])
+  cities  City[]
+
+  @@unique([countryId, name])
+  @@index([countryId])
+  @@map("states")
+}
+
+model City {
+  id        String   @id @default(uuid()) @db.Uuid
+  stateId   String   @map("state_id") @db.Uuid
+  countryId String   @map("country_id") @db.Uuid
+  name      String
+  slug      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  state            State             @relation(fields: [stateId], references: [id])
+  country          Country           @relation(fields: [countryId], references: [id])
+  localities       Locality[]
+  addresses        Address[]
+  residentProfiles ResidentProfile[]
+
+  @@unique([stateId, name])
+  @@index([isActive])
+  @@map("cities")
+}
+
+model Locality {
+  id          String   @id @default(uuid()) @db.Uuid
+  cityId      String   @map("city_id") @db.Uuid
+  name        String
+  slug        String   @unique
+  description String?
+  latitude    Float?
+  longitude   Float?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  city       City       @relation(fields: [cityId], references: [id])
+  addresses  Address[]
+  properties Property[]
+
+  @@unique([cityId, name])
+  @@index([cityId])
+  @@map("localities")
+}
+
+model Address {
+  id         String   @id @default(uuid()) @db.Uuid
+  line1      String?
+  line2      String?
+  localityId String?  @map("locality_id") @db.Uuid
+  cityId     String   @map("city_id") @db.Uuid
+  postalCode String?  @map("postal_code")
+  latitude   Float?
+  longitude  Float?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  locality   Locality?  @relation(fields: [localityId], references: [id])
+  city       City       @relation(fields: [cityId], references: [id])
+  properties Property[]
+  buildings  Building[]
+
+  @@index([cityId])
+  @@index([localityId])
+  @@map("addresses")
+}
+
+// ------------------------------ Property ------------------------------------
+
+model Landlord {
+  id          String    @id @default(uuid()) @db.Uuid
+  displayName String    @map("display_name")
+  slug        String    @unique
+  // Freeform aliases to help dedupe/search ("Rajesh K", "R. Kumar").
+  aliases     String[]  @default([])
+  isCompany   Boolean   @default(false) @map("is_company")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  properties PropertyLandlord[]
+
+  @@index([displayName])
+  @@map("landlords")
+}
+
+model PropertyManager {
+  id          String    @id @default(uuid()) @db.Uuid
+  displayName String    @map("display_name")
+  slug        String    @unique
+  company     String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  properties PropertyManagerLink[]
+
+  @@index([displayName])
+  @@map("property_managers")
+}
+
+model Building {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  addressId String?  @map("address_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  address    Address?       @relation(fields: [addressId], references: [id])
+  properties Property[]
+  units      PropertyUnit[]
+
+  @@map("buildings")
+}
+
+/// The canonical property entity. Duplicate detection relies on
+/// `canonicalName` + `aliases`; display uses `displayName`.
+model Property {
+  id            String         @id @default(uuid()) @db.Uuid
+  canonicalName String         @map("canonical_name")
+  displayName   String         @map("display_name")
+  slug          String         @unique
+  aliases       String[]       @default([])
+  propertyType  PropertyType   @map("property_type")
+  status        PropertyStatus @default(ACTIVE)
+  addressId     String?        @map("address_id") @db.Uuid
+  localityId    String?        @map("locality_id") @db.Uuid
+  buildingId    String?        @map("building_id") @db.Uuid
+  latitude      Float?
+  longitude     Float?
+  developer     String?
+  yearBuilt     Int?           @map("year_built")
+  amenities     String[]       @default([])
+  description   String?
+  // Set when status = MERGED: the surviving canonical property.
+  mergedIntoId  String?        @map("merged_into_id") @db.Uuid
+  isClaimed     Boolean        @default(false) @map("is_claimed")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  deletedAt     DateTime?      @map("deleted_at")
+
+  address    Address?              @relation(fields: [addressId], references: [id])
+  locality   Locality?             @relation(fields: [localityId], references: [id])
+  building   Building?             @relation(fields: [buildingId], references: [id])
+  mergedInto Property?             @relation("PropertyMerge", fields: [mergedIntoId], references: [id])
+  mergedFrom Property[]            @relation("PropertyMerge")
+  units      PropertyUnit[]
+  landlords  PropertyLandlord[]
+  managers   PropertyManagerLink[]
+  reviews    Review[]
+  score      PropertyScore?
+  claims     PropertyClaim[]
+  savedBy    SavedProperty[]
+
+  @@index([canonicalName])
+  @@index([propertyType])
+  @@index([status])
+  @@index([localityId])
+  @@index([latitude, longitude])
+  @@map("properties")
+}
+
+model PropertyUnit {
+  id         String   @id @default(uuid()) @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  buildingId String?  @map("building_id") @db.Uuid
+  // Opaque label (e.g. "2BHK-A"); never exposed with a reviewer identity.
+  label      String?
+  bedrooms   Int?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  property Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  building Building? @relation(fields: [buildingId], references: [id])
+
+  @@index([propertyId])
+  @@map("property_units")
+}
+
+/// Join: a property may have multiple landlords; a landlord multiple properties.
+model PropertyLandlord {
+  propertyId String           @map("property_id") @db.Uuid
+  landlordId String           @map("landlord_id") @db.Uuid
+  role       LandlordLinkRole @default(OWNER)
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  landlord Landlord @relation(fields: [landlordId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, landlordId])
+  @@index([landlordId])
+  @@map("property_landlords")
+}
+
+/// Join: a property may have multiple managers.
+model PropertyManagerLink {
+  propertyId String          @map("property_id") @db.Uuid
+  managerId  String          @map("manager_id") @db.Uuid
+  role       ManagerLinkRole @default(PROPERTY_MANAGER)
+  createdAt  DateTime        @default(now()) @map("created_at")
+
+  property Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  manager  PropertyManager @relation(fields: [managerId], references: [id], onDelete: Cascade)
+
+  @@id([propertyId, managerId])
+  @@index([managerId])
+  @@map("property_manager_links")
+}
+
+// ------------------------------- Reviews ------------------------------------
+
+/// Configurable score category metadata (keys, labels, display order).
+model ReviewCategory {
+  id           String   @id @default(uuid()) @db.Uuid
+  key          String   @unique // 'management', 'maintenance', ...
+  label        String
+  displayOrder Int      @default(0) @map("display_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("review_categories")
+}
+
+/// A single resident review. The structured answers live in `ReviewAnswer`
+/// (1:1 here but modelled separately so the questionnaire can evolve without
+/// widening this table). Reviewer identity is NEVER exposed publicly.
+model Review {
+  id          String       @id @default(uuid()) @db.Uuid
+  propertyId  String       @map("property_id") @db.Uuid
+  authorId    String       @map("author_id") @db.Uuid
+  status      ReviewStatus @default(DRAFT)
+  isVerified  Boolean      @default(false) @map("is_verified")
+  // Public, non-identifying tenure label derived from the answer.
+  tenure      TenureBucket
+  // Overall computed from structured answers at publish time (0-100 scale).
+  overall     Int?
+  publishedAt DateTime?    @map("published_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  property      Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  author        User                 @relation(fields: [authorId], references: [id])
+  answer        ReviewAnswer?
+  reports       ReviewReport[]
+  moderationLog ModerationAction[]
+  ownerResponse OwnerResponse?
+  verification  VerificationRequest?
+
+  // One active (non-removed) review per author per property is enforced in
+  // application logic; a partial unique index is added in migration SQL.
+  @@index([propertyId, status])
+  @@index([status])
+  @@index([createdAt])
+  @@index([authorId])
+  @@map("reviews")
+}
+
+/// Structured answers to the 17-question review form. Rating fields are 1-5.
+model ReviewAnswer {
+  id       String @id @default(uuid()) @db.Uuid
+  reviewId String @unique @map("review_id") @db.Uuid
+
+  // Q1 tenure stored on Review.tenure as well for indexed filtering.
+  tenure                   TenureBucket
+  // Q2-Q4 management & maintenance
+  managementResponsiveness Int                         @map("management_responsiveness") // 1-5
+  maintenanceQuality       Int                         @map("maintenance_quality") // 1-5
+  maintenanceResolution    MaintenanceResolutionBucket @map("maintenance_resolution")
+  // Q5-Q6 deposit
+  depositOutcome           DepositOutcome              @map("deposit_outcome")
+  deductionsExplained      YesNoNa                     @map("deductions_explained")
+  // Q7-Q12 experience (1-5)
+  communication            Int
+  safety                   Int
+  waterSupply              Int                         @map("water_supply")
+  internet                 Int? // nullable => "not applicable"
+  noise                    Int // 1 = very noisy, 5 = very quiet
+  rulesStrictness          Int                         @map("rules_strictness")
+  // Q13-Q14
+  wouldRentAgain           TriState                    @map("would_rent_again")
+  wouldRecommend           Boolean                     @map("would_recommend")
+  // Q15-Q17
+  likedTags                String[]                    @default([]) @map("liked_tags")
+  likedText                String?                     @map("liked_text")
+  dislikedTags             String[]                    @default([]) @map("disliked_tags")
+  dislikedText             String?                     @map("disliked_text")
+  comments                 String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("review_answers")
+}
+
+// ---------------------------- Verification ----------------------------------
+
+model VerificationRequest {
+  id              String                   @id @default(uuid()) @db.Uuid
+  userId          String                   @map("user_id") @db.Uuid
+  // A verification is usually tied to the review it supports (optional during
+  // standalone residency verification).
+  reviewId        String?                  @unique @map("review_id") @db.Uuid
+  propertyId      String                   @map("property_id") @db.Uuid
+  status          VerificationStatus       @default(PENDING)
+  evidenceType    VerificationEvidenceType @map("evidence_type")
+  reviewerId      String?                  @map("reviewer_id") @db.Uuid // admin/mod who decided
+  decidedAt       DateTime?                @map("decided_at")
+  rejectionReason String?                  @map("rejection_reason")
+  expiresAt       DateTime?                @map("expires_at")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review    Review?                @relation(fields: [reviewId], references: [id])
+  documents VerificationDocument[]
+
+  @@index([status])
+  @@index([userId])
+  @@index([propertyId])
+  @@map("verification_requests")
+}
+
+/// Metadata only. The actual file lives in private object storage; we store the
+/// storage key, never a public URL. Access is mediated by signed URLs for
+/// authorised roles only.
+model VerificationDocument {
+  id          String   @id @default(uuid()) @db.Uuid
+  requestId   String   @map("request_id") @db.Uuid
+  storageKey  String   @map("storage_key")
+  contentType String   @map("content_type")
+  sizeBytes   Int      @map("size_bytes")
+  checksum    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  request VerificationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+  @@map("verification_documents")
+}
+
+// ------------------------------- Claims -------------------------------------
+
+model PropertyClaim {
+  id              String      @id @default(uuid()) @db.Uuid
+  propertyId      String      @map("property_id") @db.Uuid
+  claimantId      String      @map("claimant_id") @db.Uuid
+  role            ClaimRole
+  status          ClaimStatus @default(PENDING)
+  reviewerId      String?     @map("reviewer_id") @db.Uuid
+  decidedAt       DateTime?   @map("decided_at")
+  rejectionReason String?     @map("rejection_reason")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  property  Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  claimant  User            @relation(fields: [claimantId], references: [id], onDelete: Cascade)
+  documents ClaimDocument[]
+
+  @@index([status])
+  @@index([propertyId])
+  @@index([claimantId])
+  @@map("property_claims")
+}
+
+model ClaimDocument {
+  id          String   @id @default(uuid()) @db.Uuid
+  claimId     String   @map("claim_id") @db.Uuid
+  storageKey  String   @map("storage_key")
+  contentType String   @map("content_type")
+  sizeBytes   Int      @map("size_bytes")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  claim PropertyClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+  @@map("claim_documents")
+}
+
+// ----------------------------- Trust score ----------------------------------
+
+/// Versioned, named weight configuration. Weights are data, not code, so they
+/// can change without a deploy. The active config drives recalculation.
+model ScoreConfiguration {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  isActive  Boolean  @default(false) @map("is_active")
+  // Category key -> weight (0..1). Summed and normalised at calc time.
+  weights   Json
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("score_configurations")
+}
+
+/// Cached, denormalised score for a property. Recalculated asynchronously.
+model PropertyScore {
+  propertyId       String   @id @map("property_id") @db.Uuid
+  configId         String?  @map("config_id") @db.Uuid
+  overall          Int // 0-100
+  sampleSize       Int      @map("sample_size")
+  // 0..1 confidence driven by sample size vs. min-reviews threshold.
+  confidence       Float
+  // Per-category breakdown: { key: { score, sampleSize } }.
+  categoryScores   Json     @map("category_scores")
+  positiveThemes   String[] @default([]) @map("positive_themes")
+  negativeThemes   String[] @default([]) @map("negative_themes")
+  lastCalculatedAt DateTime @map("last_calculated_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@map("property_scores")
+}
+
+// ----------------------------- Moderation -----------------------------------
+
+model ReviewReport {
+  id         String       @id @default(uuid()) @db.Uuid
+  reviewId   String       @map("review_id") @db.Uuid
+  reporterId String?      @map("reporter_id") @db.Uuid // nullable: anonymous report
+  reason     ReportReason
+  details    String?
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter User?  @relation(fields: [reporterId], references: [id])
+
+  @@index([status])
+  @@index([reviewId])
+  @@map("review_reports")
+}
+
+model ModerationAction {
+  id          String               @id @default(uuid()) @db.Uuid
+  reviewId    String               @map("review_id") @db.Uuid
+  moderatorId String?              @map("moderator_id") @db.Uuid
+  action      ModerationActionType
+  // Internal only. NEVER exposed on public APIs.
+  note        String?
+  // Snapshot of review status before/after for the history timeline.
+  fromStatus  ReviewStatus?        @map("from_status")
+  toStatus    ReviewStatus?        @map("to_status")
+  createdAt   DateTime             @default(now()) @map("created_at")
+
+  review    Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  moderator User?  @relation("ModeratorActions", fields: [moderatorId], references: [id])
+
+  @@index([reviewId])
+  @@map("moderation_actions")
+}
+
+// --------------------------- Owner responses --------------------------------
+
+model OwnerResponse {
+  id          String   @id @default(uuid()) @db.Uuid
+  reviewId    String   @unique @map("review_id") @db.Uuid
+  responderId String   @map("responder_id") @db.Uuid
+  body        String
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  review    Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  responder User   @relation(fields: [responderId], references: [id])
+
+  @@map("owner_responses")
+}
+
+// --------------------------- Saved properties -------------------------------
+
+model SavedProperty {
+  userId     String   @map("user_id") @db.Uuid
+  propertyId String   @map("property_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@id([userId, propertyId])
+  @@index([userId])
+  @@map("saved_properties")
+}
+
+// ----------------------------- Notifications --------------------------------
+
+model Notification {
+  id        String              @id @default(uuid()) @db.Uuid
+  userId    String              @map("user_id") @db.Uuid
+  channel   NotificationChannel @default(IN_APP)
+  type      String // e.g. 'REVIEW_PUBLISHED'
+  title     String
+  body      String
+  // Non-sensitive, structured payload for deep links.
+  data      Json?
+  status    NotificationStatus  @default(PENDING)
+  readAt    DateTime?           @map("read_at")
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("notifications")
+}
+
+// ------------------------------- Audit --------------------------------------
+
+/// Append-only audit trail for sensitive actions. Never contains secrets,
+/// tokens, passwords, or document contents.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String // e.g. 'REVIEW_REMOVED', 'CLAIM_APPROVED'
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation("ActorAudit", fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// --------------------------- Product analytics ------------------------------
+
+/// Minimal, privacy-conscious product event log behind an abstraction. No PII;
+/// userId optional and may be null for anonymous events.
+model AnalyticsEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String // 'SEARCH_PERFORMED', 'PROPERTY_VIEWED', ...
+  userId    String?  @map("user_id") @db.Uuid
+  anonId    String?  @map("anon_id")
+  props     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([name])
+  @@index([createdAt])
+  @@map("analytics_events")
 }

@@ -1,0 +1,62 @@
+# Local development infrastructure for RentTrust.
+# Brings up PostgreSQL (with PostGIS), Redis, and MinIO (S3-compatible object
+# storage). The API and worker run on the host during development; see the
+# production Dockerfile / container-host config added in Phase 14 for deploys.
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: rentrust-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rentrust
+      POSTGRES_PASSWORD: rentrust
+      POSTGRES_DB: rentrust
+    ports:
+      - '5432:5432'
+    volumes:
+      - rentrust-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U rentrust -d rentrust']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: rentrust-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - rentrust-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: rentrust-minio
+    restart: unless-stopped
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: rentrust
+      MINIO_ROOT_PASSWORD: rentrust-secret
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - rentrust-minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rentrust-postgres-data:
+  rentrust-redis-data:
+  rentrust-minio-data:
