@@ -8,8 +8,13 @@ import { randomUUID } from 'crypto';
 import { ConfigModule } from './config/config.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { MailerModule } from './notifications/mailer/mailer.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
 import { AppConfig } from './config/configuration';
 
 /**
@@ -28,7 +33,7 @@ import { AppConfig } from './config/configuration';
         const env = config.get('env', { infer: true });
         return {
           pinoHttp: {
-            level: env === 'production' ? 'info' : 'debug',
+            level: env === 'test' ? 'silent' : env === 'production' ? 'info' : 'debug',
             // Correlate every log line with a request id.
             genReqId: (req) => (req.headers['x-request-id'] as string) ?? randomUUID(),
             customProps: (req) => ({ requestId: (req as { id?: string }).id }),
@@ -59,12 +64,18 @@ import { AppConfig } from './config/configuration';
       },
     }),
     DatabaseModule,
+    MailerModule,
     HealthModule,
+    UsersModule,
+    AuthModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
     { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+    // Guard order matters: throttle first, then authenticate, then authorize.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}
