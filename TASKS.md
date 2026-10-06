@@ -7,9 +7,9 @@
 > with a Next.js frontend. Built in phases; each phase ends green on
 > typecheck + lint + build + unit + e2e before moving on.
 
-**Progress: 11 / 15 phases complete.**
+**Progress: 12 / 15 phases complete.**
 
-Current test tally: **32 unit tests + 60 e2e tests**, all passing.
+Current test tally: **32 unit tests + 65 e2e tests**, all passing.
 
 Storage: Cloudflare R2 (S3-compatible) in production via the S3 driver; images
 are compressed and EXIF-stripped server-side (`sharp`, re-encoded to WebP)
@@ -111,17 +111,21 @@ S3-compatible object storage.
 - Score-weight settings (create/activate configurations; single-active upheld).
 - All admin routes are ADMIN-only and namespaced under `/api/v1/admin`.
 
+### [x] Phase 12 — Analytics, notifications, observability
+- Analytics abstraction (DB provider now; Segment/PostHog swap-in later);
+  public event-tracking endpoint (anonymous allowed).
+- Notification service: in-app + email, driven by domain events
+  (review published/removed/verified, claim approved).
+- Saved properties, property comparison (2–4), and locality intelligence
+  endpoints (closes spec sections 20–22).
+- Observability: structured logs with request IDs and health/readiness probes
+  already in place.
+
 ---
 
 ## Not completed
 
-### [ ] Phase 12 — Analytics, notifications, observability  *(next)*
-- Analytics abstraction over product events (provider-swappable).
-- Notification service: email + in-app (abstraction already stubbed).
-- Observability polish (structured logs/request IDs already in place; add
-  metrics surface).
-
-### [ ] Phase 13 — Testing
+### [ ] Phase 13 — Testing  *(next)*
 - Consolidate and fill coverage gaps across auth, authz, search, properties,
   reviews, verification, moderation, anonymity, owner response, claims, trust
   score, geo, pagination. (Already at 53 e2e + 27 unit.)
@@ -144,8 +148,8 @@ S3-compatible object storage.
 
 ## Known gaps to close (tracked)
 
-- Saved properties, property comparison, and locality-intelligence endpoints
-  (spec sections 20–22) are not built yet; needed by the frontend. To be added
-  during Phase 11 or alongside the frontend phase.
-- SMTP mailer and S3 storage drivers are implemented as adapters but exercised
-  with the console/mock drivers in dev and tests.
+- SMTP mailer is implemented as a clean adapter but exercised with the console
+  driver in dev and tests; wire a real transport (nodemailer/SES/Resend) before
+  production email.
+- S3/R2 storage and image compression run against the mock storage driver in
+  dev and tests; point `STORAGE_DRIVER=s3` at a real R2 bucket for production.
