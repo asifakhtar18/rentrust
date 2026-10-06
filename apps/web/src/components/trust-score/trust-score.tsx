@@ -11,7 +11,7 @@ export function scoreBand(score: number): { label: string; color: string; bar: s
   if (score >= 65) return { label: 'Good', color: 'text-success', bar: 'bg-success/80' };
   if (score >= 45) return { label: 'Average', color: 'text-warning', bar: 'bg-warning' };
   if (score >= 30) return { label: 'Poor', color: 'text-warning', bar: 'bg-orange-500' };
-  return { label: 'Very poor', color: 'text-danger', bar: 'bg-danger' };
+  return { label: 'Very poor', color: 'text-destructive', bar: 'bg-destructive' };
 }
 
 /** The headline score block: big number + band + sample size. */
@@ -32,8 +32,8 @@ export function TrustScore({
     <div className={cn('flex items-baseline gap-3', className)}>
       <span className={cn('tabular font-semibold tracking-tight text-foreground', numCls)}>{score}</span>
       <div>
-        <p className={cn('text-small font-medium', band.color)}>{band.label} trust</p>
-        <p className="text-caption text-text-tertiary">
+        <p className={cn('t-label', band.color)}>{band.label} trust</p>
+        <p className="t-helper">
           {sampleSize} verified {sampleSize === 1 ? 'experience' : 'experiences'}
         </p>
       </div>
@@ -46,11 +46,11 @@ export function CategoryRow({ label, score }: { label: string; score: number }) 
   const band = scoreBand(score);
   return (
     <div className="flex items-center gap-3">
-      <span className="w-32 shrink-0 text-small text-text-secondary">{label}</span>
-      <div className="h-1.5 flex-1 overflow-hidden rounded-pill bg-surface-hover">
+      <span className="w-32 shrink-0 t-body text-muted-foreground">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-pill bg-muted">
         <div className={cn('h-full rounded-pill transition-all duration-500', band.bar)} style={{ width: `${Math.max(3, score)}%` }} />
       </div>
-      <span className="w-8 shrink-0 text-right text-small font-medium tabular text-foreground">{score}</span>
+      <span className="w-8 shrink-0 text-right t-label tabular text-foreground">{score}</span>
     </div>
   );
 }
@@ -59,10 +59,10 @@ export function CategoryRow({ label, score }: { label: string; score: number }) 
 export function ScorePill({ score }: { score: number }) {
   const band = scoreBand(score);
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1">
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1">
       <span className={cn('size-1.5 rounded-full', band.bar)} aria-hidden />
-      <span className="tabular text-small font-semibold text-foreground">{score}</span>
-      <span className="text-caption text-text-tertiary">{band.label}</span>
+      <span className="tabular text-[13px] font-semibold text-foreground">{score}</span>
+      <span className="t-helper">{band.label}</span>
     </span>
   );
 }

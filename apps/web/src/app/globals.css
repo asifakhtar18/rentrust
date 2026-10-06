@@ -2,27 +2,178 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * RentTrust — Apple design system (web translation of Apple HIG).
+ * SF Pro system font stack, Apple system colors (one blue accent), 8pt grid,
+ * materials/vibrancy, generous whitespace, large radii, semantic light/dark.
+ * Tokens are HSL channel-triples so Tailwind composes slash-alpha.
+ */
 @layer base {
   :root {
-    color-scheme: light;
+    /* Apple light: systemGray6 canvas, pure white cards, label colors */
+    --background: 240 6% 97%;        /* ~ systemGray6 #F2F2F7 warm-cool */
+    --foreground: 0 0% 7%;           /* label — near #111 */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+
+    /* Apple system blue — the single interactive accent */
+    --primary: 211 100% 45%;         /* #0071E3 Apple.com blue */
+    --primary-hover: 211 100% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 6% 94%;
+    --secondary-foreground: 0 0% 18%;
+    --muted: 240 6% 94%;
+    --muted-foreground: 240 2% 46%;  /* secondaryLabel */
+    --accent: 240 6% 94%;
+    --accent-foreground: 0 0% 18%;
+
+    --success: 145 63% 42%;          /* systemGreen */
+    --positive: 145 63% 42%;
+    --warning: 35 100% 48%;          /* systemOrange */
+    --destructive: 3 85% 54%;        /* systemRed */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 88%;            /* separator */
+    --input: 240 6% 88%;
+    --ring: 211 100% 45%;
+
+    /* Apple-ish radii (continuous-corner feel) */
+    --radius: 0.875rem;              /* 14px */
+    --radius-control: 0.625rem;      /* 10px */
+    --radius-input: 0.625rem;
+    --radius-xl: 1.25rem;            /* 20px */
+
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  }
+
+  .dark {
+    /* Apple dark: true-black-ish base, elevated grays, bright blue */
+    --background: 0 0% 7%;           /* systemBackground dark #121212-ish */
+    --foreground: 0 0% 96%;
+    --card: 240 4% 11%;              /* secondarySystemBackground */
+    --card-foreground: 0 0% 96%;
+    --popover: 240 4% 13%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 211 100% 60%;         /* systemBlue dark #0A84FF-ish */
+    --primary-hover: 211 100% 66%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 90%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 2% 62%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 90%;
+    --success: 145 63% 49%;
+    --positive: 145 63% 49%;
+    --warning: 35 100% 55%;
+    --destructive: 3 90% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 20%;
+    --input: 240 4% 20%;
+    --ring: 211 100% 60%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
   }
   html {
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    /* SF Pro on Apple devices; graceful system fallback elsewhere. */
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+      'Helvetica Neue', 'Segoe UI', system-ui, sans-serif;
+    letter-spacing: -0.011em;
   }
   ::selection {
-    @apply bg-brand/15 text-foreground;
+    background: hsl(var(--primary) / 0.18);
   }
   :focus-visible {
-    @apply outline-none ring-2 ring-brand/40 ring-offset-2 ring-offset-background;
-    border-radius: 6px;
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring) / 0.5);
+    border-radius: var(--radius-control);
   }
-  /* Tabular figures for all numeric data (scores, prices, counts). */
+}
+
+/*
+ * Apple type scale (web). Large display is semibold with tight tracking;
+ * body stays highly legible. SF Pro Display traits are approximated via weight
+ * + negative tracking at large sizes.
+ */
+@layer components {
+  .t-display {
+    font-size: clamp(2.5rem, 6vw, 3.75rem);
+    line-height: 1.05;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+  }
+  .t-page-title {
+    font-size: 2rem;      /* 32 */
+    line-height: 1.12;
+    font-weight: 600;
+    letter-spacing: -0.021em;
+  }
+  .t-section-title {
+    font-size: 1.5rem;    /* 24 */
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: -0.017em;
+  }
+  .t-title3 {
+    font-size: 1.1875rem; /* 19 */
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+  }
+  .t-body {
+    font-size: 1.0625rem; /* 17 — Apple body */
+    line-height: 1.55;
+    font-weight: 400;
+  }
+  .t-callout {
+    font-size: 0.9375rem; /* 15 */
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  .t-label {
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  .t-meta {
+    font-size: 0.8125rem; /* 13 — footnote */
+    line-height: 1.4;
+    font-weight: 400;
+    color: hsl(var(--muted-foreground));
+  }
+  .t-helper {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    font-weight: 400;
+    color: hsl(var(--muted-foreground));
+  }
+  .eyebrow {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: hsl(var(--primary));
+  }
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Material — Apple translucency/vibrancy for the nav + overlays. */
+  .material {
+    background: hsl(var(--background) / 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
   }
 }
 

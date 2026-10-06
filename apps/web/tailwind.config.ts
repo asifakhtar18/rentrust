@@ -1,15 +1,9 @@
 import type { Config } from 'tailwindcss';
 
 /*
- * RentTrust design tokens — LIGHT-FIRST, warm, editorial, premium.
- * Following the RentTrust UI Skill spec exactly.
- *
- * Background: #FAFAF9 (warm white)
- * Surface: #FFFFFF
- * Brand: #4F46E5 (deep indigo)
- * Typography: Geist Sans, clean weights
- * Radius: restrained (6/8/12/16)
- * Shadows: minimal, borders preferred
+ * RentTrust — Folyo-grade token mapping. All colors resolve from HSL CSS
+ * variables (globals.css) so themes are authored, not inverted. One functional
+ * accent (primary indigo). Inter for UI, Geist Mono for tabular data.
  */
 const config: Config = {
   content: ['./src/**/*.{ts,tsx}'],
@@ -17,56 +11,75 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['var(--font-geist)', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: [
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'SF Pro Text',
+          'SF Pro Display',
+          'Helvetica Neue',
+          'Segoe UI',
+          'system-ui',
+          'sans-serif',
+        ],
         mono: ['var(--font-geist-mono)', 'ui-monospace', 'monospace'],
       },
       colors: {
-        background: '#FAFAF9',
-        surface: '#FFFFFF',
-        'surface-hover': '#F5F5F4',
-        'surface-active': '#EEEEEC',
-        foreground: '#171717',
-        'text-secondary': '#666666',
-        'text-tertiary': '#999999',
-        border: '#E7E5E4',
-        'border-subtle': '#F0EEEC',
-        brand: {
-          DEFAULT: '#4F46E5',
-          hover: '#4338CA',
-          muted: '#EEF2FF',
-          foreground: '#FFFFFF',
+        background: 'hsl(var(--background) / <alpha-value>)',
+        foreground: 'hsl(var(--foreground) / <alpha-value>)',
+        card: {
+          DEFAULT: 'hsl(var(--card) / <alpha-value>)',
+          foreground: 'hsl(var(--card-foreground) / <alpha-value>)',
         },
-        success: '#16A34A',
-        warning: '#D97706',
-        danger: '#DC2626',
-        info: '#2563EB',
+        popover: {
+          DEFAULT: 'hsl(var(--popover) / <alpha-value>)',
+          foreground: 'hsl(var(--popover-foreground) / <alpha-value>)',
+        },
+        primary: {
+          DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
+          hover: 'hsl(var(--primary-hover) / <alpha-value>)',
+          foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
+        },
+        secondary: {
+          DEFAULT: 'hsl(var(--secondary) / <alpha-value>)',
+          foreground: 'hsl(var(--secondary-foreground) / <alpha-value>)',
+        },
+        muted: {
+          DEFAULT: 'hsl(var(--muted) / <alpha-value>)',
+          foreground: 'hsl(var(--muted-foreground) / <alpha-value>)',
+        },
+        accent: {
+          DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
+          foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
+        },
+        success: 'hsl(var(--success) / <alpha-value>)',
+        positive: 'hsl(var(--positive) / <alpha-value>)',
+        warning: 'hsl(var(--warning) / <alpha-value>)',
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+          foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
+        },
+        border: 'hsl(var(--border) / <alpha-value>)',
+        input: 'hsl(var(--input) / <alpha-value>)',
+        ring: 'hsl(var(--ring) / <alpha-value>)',
       },
       borderRadius: {
-        sm: '6px',
-        DEFAULT: '8px',
-        md: '8px',
-        lg: '12px',
-        xl: '16px',
+        sm: 'var(--radius-control)',
+        DEFAULT: 'var(--radius-input)',
+        md: 'var(--radius-input)',
+        lg: 'var(--radius)',
+        xl: 'var(--radius-xl)',
         pill: '9999px',
       },
       boxShadow: {
-        sm: '0 1px 2px 0 rgb(0 0 0 / 0.04)',
-        DEFAULT: '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
-        md: '0 4px 12px -2px rgb(0 0 0 / 0.08)',
+        /* Apple-style soft, diffuse elevation — never harsh. */
+        sm: '0 1px 2px 0 hsl(240 6% 10% / 0.05)',
+        DEFAULT: '0 2px 8px -2px hsl(240 6% 10% / 0.08)',
+        md: '0 8px 30px -8px hsl(240 6% 10% / 0.14)',
+        lg: '0 20px 60px -16px hsl(240 6% 10% / 0.22)',
       },
-      fontSize: {
-        'display': ['3.5rem', { lineHeight: '1.1', letterSpacing: '-0.025em', fontWeight: '600' }],
-        'h1': ['3rem', { lineHeight: '1.15', letterSpacing: '-0.025em', fontWeight: '600' }],
-        'h2': ['2.25rem', { lineHeight: '1.2', letterSpacing: '-0.02em', fontWeight: '600' }],
-        'h3': ['1.5rem', { lineHeight: '1.3', letterSpacing: '-0.015em', fontWeight: '600' }],
-        'h4': ['1.25rem', { lineHeight: '1.4', letterSpacing: '-0.01em', fontWeight: '500' }],
-        'body': ['1rem', { lineHeight: '1.6' }],
-        'small': ['0.875rem', { lineHeight: '1.5' }],
-        'caption': ['0.8125rem', { lineHeight: '1.4' }],
-      },
-      spacing: {
-        '18': '4.5rem',
-        '22': '5.5rem',
+      transitionTimingFunction: {
+        out: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        'in-out': 'cubic-bezier(0.77, 0, 0.175, 1)',
       },
     },
   },

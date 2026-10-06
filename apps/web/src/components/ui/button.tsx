@@ -15,16 +15,16 @@ const base =
   'active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none select-none whitespace-nowrap';
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-brand text-brand-foreground hover:bg-brand-hover shadow-sm',
-  secondary: 'bg-surface text-foreground border border-border hover:bg-surface-hover',
-  ghost: 'text-text-secondary hover:text-foreground hover:bg-surface-hover',
-  danger: 'bg-danger text-white hover:brightness-95',
+  primary: 'bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm',
+  secondary: 'bg-card text-foreground border border-border hover:bg-muted',
+  ghost: 'text-muted-foreground hover:text-foreground hover:bg-muted',
+  danger: 'bg-destructive text-destructive-foreground hover:brightness-95',
 };
 
 const sizes: Record<Size, string> = {
-  sm: 'h-9 px-3.5 text-small',
-  md: 'h-10 px-4 text-small',
-  lg: 'h-12 px-6 text-body',
+  sm: 'h-9 px-3.5 text-[13px]',
+  md: 'h-10 px-4 text-[13px]',
+  lg: 'h-12 px-6 text-[14px]',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

@@ -17,11 +17,11 @@ export function SearchBar({ initial = '', size = 'lg', autoFocus = false }: { in
         if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
       }}
       className={cn(
-        'flex items-center gap-3 rounded-lg border border-border bg-surface pr-2 shadow-sm transition-colors duration-150 focus-within:border-brand',
+        'flex items-center gap-3 rounded-lg border border-border bg-card pr-2 shadow-sm transition-colors duration-150 focus-within:border-primary',
         size === 'lg' ? 'h-14 pl-4' : 'h-11 pl-3.5',
       )}
     >
-      <Search className="size-5 shrink-0 text-text-tertiary" aria-hidden />
+      <Search className="size-5 shrink-0 text-muted-foreground" aria-hidden />
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -29,13 +29,13 @@ export function SearchBar({ initial = '', size = 'lg', autoFocus = false }: { in
         autoFocus={autoFocus}
         placeholder="Search a property, landlord, or locality"
         aria-label="Search"
-        className={cn('w-full bg-transparent text-foreground placeholder:text-text-tertiary focus:outline-none', size === 'lg' ? 'text-body' : 'text-small')}
+        className={cn('w-full bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none', size === 'lg' ? 't-body' : 'text-[14px]')}
       />
       <button
         type="submit"
         className={cn(
-          'shrink-0 rounded-md bg-brand font-medium text-brand-foreground transition-colors duration-150 hover:bg-brand-hover active:scale-95',
-          size === 'lg' ? 'h-10 px-5 text-small' : 'h-8 px-3.5 text-small',
+          'shrink-0 rounded-md bg-primary font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary-hover active:scale-95',
+          size === 'lg' ? 'h-10 px-5 text-[14px]' : 'h-8 px-3.5 text-[14px]',
         )}
       >
         Search

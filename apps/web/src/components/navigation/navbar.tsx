@@ -18,8 +18,8 @@ export function Navbar() {
     <Link
       href={href}
       className={cn(
-        'text-small transition-colors',
-        pathname === href ? 'text-foreground' : 'text-text-secondary hover:text-foreground',
+        'text-[14px] transition-colors',
+        pathname === href ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
       )}
     >
       {label}
@@ -27,13 +27,13 @@ export function Navbar() {
   );
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/85 backdrop-blur-md">
-      <nav className="mx-auto flex h-16 max-w-[1200px] items-center gap-7 px-6">
+    <header className="material sticky top-0 z-50 border-b border-border/60">
+      <nav className="mx-auto flex h-12 max-w-[1024px] items-center gap-8 px-6">
         <Link href="/" className="flex items-center gap-2">
-          <span className="flex size-7 items-center justify-center rounded-md bg-brand text-brand-foreground">
+          <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <ShieldCheck className="size-4" aria-hidden />
           </span>
-          <span className="text-body font-semibold tracking-tight text-foreground">RentTrust</span>
+          <span className="t-body font-semibold tracking-tight text-foreground">RentTrust</span>
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">
@@ -58,18 +58,18 @@ export function Navbar() {
             <div className="relative">
               <button
                 onClick={() => setOpen((o) => !o)}
-                className="flex items-center gap-1.5 rounded-md py-1 pl-1 pr-2 transition-colors hover:bg-surface-hover"
+                className="flex items-center gap-1.5 rounded-md py-1 pl-1 pr-2 transition-colors hover:bg-muted"
                 aria-label="Account menu"
                 aria-expanded={open}
               >
-                <span className="flex size-7 items-center justify-center rounded-full bg-brand-muted text-caption font-semibold text-brand">
+                <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[13px] font-semibold text-primary">
                   {(user.displayName ?? user.email).slice(0, 1).toUpperCase()}
                 </span>
-                <ChevronDown className="size-3.5 text-text-tertiary" aria-hidden />
+                <ChevronDown className="size-3.5 text-muted-foreground" aria-hidden />
               </button>
               {open && (
                 <div
-                  className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-border bg-surface p-1 shadow-md"
+                  className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-border bg-card p-1 shadow-md"
                   onMouseLeave={() => setOpen(false)}
                 >
                   <MenuItem href="/profile" onClick={() => setOpen(false)}>Profile</MenuItem>
@@ -77,7 +77,7 @@ export function Navbar() {
                   {isAdmin && <MenuItem href="/admin" onClick={() => setOpen(false)}>Console</MenuItem>}
                   <div className="my-1 h-px bg-border" />
                   <button
-                    className="w-full rounded-md px-3 py-1.5 text-left text-small text-text-secondary transition-colors hover:bg-surface-hover hover:text-foreground"
+                    className="w-full rounded-md px-3 py-1.5 text-left text-[14px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                     onClick={() => { setOpen(false); void logout(); }}
                   >
                     Sign out
@@ -97,7 +97,7 @@ function MenuItem({ href, children, onClick }: { href: string; children: string;
     <Link
       href={href}
       onClick={onClick}
-      className="block rounded-md px-3 py-1.5 text-small text-text-secondary transition-colors hover:bg-surface-hover hover:text-foreground"
+      className="block rounded-md px-3 py-1.5 text-[14px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
     >
       {children}
     </Link>
