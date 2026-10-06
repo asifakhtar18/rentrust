@@ -39,6 +39,13 @@ export class LocationsController {
     return { data: await this.locations.listLocalities(cityId) };
   }
 
+  @Public()
+  @Get('localities/:id')
+  @ApiOperation({ summary: 'Locality intelligence: aggregated resident sentiment' })
+  async localityIntelligence(@Param('id') id: string) {
+    return { data: await this.locations.getLocalityIntelligence(id) };
+  }
+
   @Roles(UserRole.ADMIN)
   @Post('cities')
   @ApiOperation({ summary: 'Create a city (admin)' })

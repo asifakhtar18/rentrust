@@ -65,6 +65,76 @@ export class LocationsService {
     return locality;
   }
 
+  /**
+   * Derived locality intelligence: resident sentiment aggregated from the
+   * trust scores of the locality's properties. Everything here comes from real
+   * data — when there isn't enough, we say so rather than fabricating numbers.
+   */
+  async getLocalityIntelligence(id: string) {
+    const locality = await this.getLocalityById(id);
+
+    const properties = await this.prisma.property.findMany({
+      where: { localityId: id, deletedAt: null, status: 'ACTIVE' },
+      include: { score: true },
+    });
+    const scored = properties.filter((p) => p.score !== null);
+    const propertyCount = properties.length;
+
+    if (scored.length === 0) {
+      return {
+        locality: { id: locality.id, name: locality.name, slug: locality.slug },
+        propertyCount,
+        hasEnoughData: false,
+        message: 'Not enough verified resident data yet.',
+      };
+    }
+
+    // Average the per-category scores across scored properties.
+    const categoryTotals = new Map<string, { sum: number; n: number }>();
+    const positive = new Map<string, number>();
+    const negative = new Map<string, number>();
+    let overallSum = 0;
+    let sampleTotal = 0;
+
+    for (const p of scored) {
+      const score = p.score!;
+      overallSum += score.overall;
+      sampleTotal += score.sampleSize;
+      const cats = score.categoryScores as Record<string, { score: number }>;
+      for (const [key, val] of Object.entries(cats)) {
+        const cur = categoryTotals.get(key) ?? { sum: 0, n: 0 };
+        cur.sum += val.score;
+        cur.n += 1;
+        categoryTotals.set(key, cur);
+      }
+      for (const t of score.positiveThemes) positive.set(t, (positive.get(t) ?? 0) + 1);
+      for (const t of score.negativeThemes) negative.set(t, (negative.get(t) ?? 0) + 1);
+    }
+
+    const categoryAverages: Record<string, number> = {};
+    for (const [key, { sum, n }] of categoryTotals) {
+      categoryAverages[key] = Math.round(sum / n);
+    }
+
+    const topThemes = (m: Map<string, number>) =>
+      [...m.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([t]) => t);
+
+    return {
+      locality: { id: locality.id, name: locality.name, slug: locality.slug },
+      propertyCount,
+      scoredPropertyCount: scored.length,
+      totalReviews: sampleTotal,
+      hasEnoughData: true,
+      averageTrustScore: Math.round(overallSum / scored.length),
+      categoryAverages,
+      commonPositiveThemes: topThemes(positive),
+      commonComplaints: topThemes(negative),
+    };
+  }
+
   async createCity(dto: CreateCityDto): Promise<City> {
     const state = await this.prisma.state.findUnique({ where: { id: dto.stateId } });
     if (!state) {

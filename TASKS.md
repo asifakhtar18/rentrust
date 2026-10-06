@@ -7,9 +7,13 @@
 > with a Next.js frontend. Built in phases; each phase ends green on
 > typecheck + lint + build + unit + e2e before moving on.
 
-**Progress: 10 / 15 phases complete.**
+**Progress: 11 / 15 phases complete.**
 
-Current test tally: **27 unit tests + 53 e2e tests**, all passing.
+Current test tally: **32 unit tests + 60 e2e tests**, all passing.
+
+Storage: Cloudflare R2 (S3-compatible) in production via the S3 driver; images
+are compressed and EXIF-stripped server-side (`sharp`, re-encoded to WebP)
+before storage. Documents (PDFs) use presigned direct-to-storage uploads.
 
 Deployment target: frontend on Vercel; backend (API + BullMQ worker) on a
 container host (Render/Railway/Fly) with managed Postgres/PostGIS, Redis, and
@@ -97,20 +101,21 @@ S3-compatible object storage.
 - Owners cannot edit, delete, suppress reviews, or see reviewer identity
   (enforced + tested).
 
+### [x] Phase 11 — Admin
+- Dashboard metrics (users, verified residents, reviews, verified reviews,
+  properties, claimed properties, pending moderation, pending verification,
+  open reports, active cities).
+- Management: users (roles + suspend/activate), landlords, managers,
+  landlord↔property linking, reports, analytics summary.
+- CSV property import with per-row validation and dry-run mode.
+- Score-weight settings (create/activate configurations; single-active upheld).
+- All admin routes are ADMIN-only and namespaced under `/api/v1/admin`.
+
 ---
 
 ## Not completed
 
-### [ ] Phase 11 — Admin  *(in progress / next)*
-- Dashboard metrics (users, verified residents, reviews, verified reviews,
-  properties, claimed properties, pending moderation, pending verification,
-  reports, active cities).
-- Management tables: users, properties, landlords, managers, localities,
-  reports, analytics, settings.
-- CSV property import with validation.
-- Landlord / property-manager management (fills current CRUD gap).
-
-### [ ] Phase 12 — Analytics, notifications, observability
+### [ ] Phase 12 — Analytics, notifications, observability  *(next)*
 - Analytics abstraction over product events (provider-swappable).
 - Notification service: email + in-app (abstraction already stubbed).
 - Observability polish (structured logs/request IDs already in place; add
