@@ -7,9 +7,11 @@
 > with a Next.js frontend. Built in phases; each phase ends green on
 > typecheck + lint + build + unit + e2e before moving on.
 
-**Progress: 13 / 15 phases complete.**
+**Progress: 14 / 15 phases complete — backend done; frontend remaining.**
 
 Current test tally: **36 unit tests + 65 e2e tests (101 total)**, all passing.
+The production Docker image has been built and verified to boot and serve
+`/health`, `/ready`, and the API.
 
 Storage: Cloudflare R2 (S3-compatible) in production via the S3 driver; images
 are compressed and EXIF-stripped server-side (`sharp`, re-encoded to WebP)
@@ -128,23 +130,26 @@ S3-compatible object storage.
 - Added isolated unit tests for the trust-score engine math (weighting,
   confidence curve, no-data path).
 
+### [x] Phase 14 — Deployment & docs
+- Multi-stage `Dockerfile` (API + worker share one image; built and verified to
+  boot and serve `/health`, `/ready`, `/api/docs`).
+- `docker-compose` with an opt-in `app` profile for API + worker alongside
+  Postgres/PostGIS + Redis + MinIO.
+- Fictional dev seed: 5 localities, 10 landlords, 5 managers, 20 properties,
+  100 reviews, trust scores (idempotent, clearly marked).
+- OpenAPI/Swagger at `/api/docs`, `README`, `docs/architecture.md`, 9 ADRs,
+  GitHub Actions CI (lint, typecheck, unit, e2e, build, deploy-ready image).
+
 ---
 
-## Not completed
+## Remaining
 
-### [ ] Phase 14 — Deployment & docs  *(next)*
-- Multi-stage `Dockerfile` for API + separate worker process.
-- `docker-compose` for local Postgres/PostGIS + Redis + MinIO (present; finalize).
-- Seed data: 20 properties, 10 landlords, 5 managers, 100 fictional reviews,
-  multiple localities (clearly marked development data).
-- OpenAPI/Swagger (live at `/api/docs`), `README`, `docs/architecture.md`,
-  9 ADRs, GitHub Actions CI pipeline.
-
-### [ ] Frontend — Next.js app (Apple-inspired design system)
+### [ ] Frontend — Next.js app (Apple-inspired design system)  *(next)*
 - Customer pages: home, search, property, landlord, locality, compare, saved,
   multi-step review flow, profile.
 - Admin pages: properties, reviews, moderation, verifications, claims, users.
-- Modern, minimal, trustworthy, mobile-first.
+- Modern, minimal, trustworthy, mobile-first; secure auth via a thin BFF
+  cookie layer for the rotating refresh token.
 
 ---
 
