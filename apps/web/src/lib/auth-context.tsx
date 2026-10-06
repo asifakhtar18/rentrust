@@ -13,13 +13,6 @@ import {
 import { API_BASE_URL, ApiError } from './api';
 import type { ApiMeta, AuthUser } from './types';
 
-/**
- * Client auth. The access token lives only in memory (a ref), never in
- * localStorage. The refresh token is an httpOnly cookie managed by the BFF.
- * `request` attaches the token and transparently refreshes once on a 401,
- * de-duplicating concurrent refreshes so a burst of 401s triggers one refresh.
- */
-
 interface AuthState {
   user: AuthUser | null;
   loading: boolean;
@@ -38,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  /** Ask the BFF to rotate the refresh cookie and hand back a new access token. */
   const doRefresh = useCallback(async (): Promise<boolean> => {
     if (refreshing.current) return refreshing.current;
     refreshing.current = (async () => {
@@ -61,11 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return refreshing.current;
   }, []);
 
-  /** Authenticated request against the backend with one transparent retry. */
   const request = useCallback(
     async <T,>(path: string, init: RequestInit = {}): Promise<{ data: T; meta: ApiMeta }> => {
-      const call = async () => {
-        const res = await fetch(`${API_BASE_URL}${path}`, {
+      const call = () =>
+        fetch(`${API_BASE_URL}${path}`, {
           ...init,
           headers: {
             'Content-Type': 'application/json',
@@ -74,13 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
           cache: 'no-store',
         });
-        return res;
-      };
 
       let res = await call();
-      if (res.status === 401 && (await doRefresh())) {
-        res = await call();
-      }
+      if (res.status === 401 && (await doRefresh())) res = await call();
 
       const body = (await res.json().catch(() => null)) as
         | { success: true; data: T; meta?: ApiMeta }
@@ -109,18 +96,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [request]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const res = await fetch('/api/auth/login', {
+  const authAction = useCallback(
+    async (endpoint: string, payload: Record<string, unknown>) => {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(payload),
       });
       const body = (await res.json()) as
         | { success: true; data: { accessToken: string } }
         | { success: false; error: { code: string; message: string } };
       if (!res.ok || body.success === false) {
-        const msg = body.success === false ? body.error.message : 'Login failed';
+        const msg = body.success === false ? body.error.message : 'Request failed';
         throw new ApiError(body.success === false ? body.error.code : 'UNKNOWN', msg, res.status);
       }
       accessToken.current = body.data.accessToken;
@@ -129,33 +116,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [refreshUser],
   );
 
+  const login = useCallback((email: string, password: string) => authAction('/api/auth/login', { email, password }), [authAction]);
   const register = useCallback(
-    async (email: string, password: string, displayName?: string) => {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName }),
-      });
-      const body = (await res.json()) as
-        | { success: true; data: { accessToken: string } }
-        | { success: false; error: { code: string; message: string } };
-      if (!res.ok || body.success === false) {
-        const msg = body.success === false ? body.error.message : 'Registration failed';
-        throw new ApiError(body.success === false ? body.error.code : 'UNKNOWN', msg, res.status);
-      }
-      accessToken.current = body.data.accessToken;
-      await refreshUser();
-    },
-    [refreshUser],
+    (email: string, password: string, displayName?: string) =>
+      authAction('/api/auth/register', { email, password, displayName }),
+    [authAction],
   );
-
   const logout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
     accessToken.current = null;
     setUser(null);
   }, []);
 
-  // On mount, try to restore a session from the refresh cookie.
   useEffect(() => {
     (async () => {
       const ok = await doRefresh();

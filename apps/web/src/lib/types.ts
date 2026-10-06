@@ -1,5 +1,3 @@
-/** Shared types mirroring the backend's public contracts (not exhaustive). */
-
 export type PropertyType =
   | 'APARTMENT'
   | 'PG'
@@ -72,7 +70,6 @@ export interface TrustScore {
 export interface PropertyDetail extends Property {
   address: { line1: string | null; postalCode: string | null } | null;
   locality: { id: string; name: string; slug: string } | null;
-  score: unknown;
   landlords: Array<{ id: string; displayName: string; role: string }>;
   managers: Array<{ id: string; displayName: string; role: string }>;
   reviewCount: number;

@@ -1,182 +1,19 @@
-@import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*
- * RentTrust — DARK-FIRST. Black / muted grey / muted red / silver.
- * Editorial-premium on black. One hot hue (muted crimson). Everything else
- * is greyscale. Inspired by high-end agency craft + anti-slop discipline.
- */
-:root {
-  --canvas: 6 6 6;
-  --canvas-2: 10 10 10;
-  --surface: 16 16 16;
-  --surface-raised: 24 24 24;
-  --hairline: 180 180 180;
-
-  --ink: 220 220 220;
-  --ink-secondary: 145 145 145;
-  --ink-tertiary: 90 90 90;
-
-  --accent: 185 45 45;        /* muted crimson — the only hue */
-  --accent-ink: 230 230 230;
-  --accent-bright: 210 60 55; /* brighter variant for small glows/highlights */
-
-  --silver: 165 165 165;      /* secondary highlight, borders, icons */
-
-  --positive: 150 150 150;    /* silver reads as "good" in mono world */
-  --caution: 185 155 70;      /* muted gold, used extremely sparingly */
-  --critical: 185 45 45;
-
-  --shadow: 0 0 0;
-  --score-excellent: 185 45 45;
-  --score-good: 165 165 165;
-  --score-mixed: 110 110 110;
-  --score-poor: 70 70 70;
-
-  --font-display: 'Clash Display', 'Inter', system-ui, sans-serif;
-}
-
-[data-theme='light'] {
-  --canvas: 244 244 244;
-  --canvas-2: 238 238 238;
-  --surface: 255 255 255;
-  --surface-raised: 255 255 255;
-  --hairline: 50 50 50;
-  --ink: 22 22 22;
-  --ink-secondary: 85 85 85;
-  --ink-tertiary: 140 140 140;
-  --accent: 165 30 30;
-  --accent-ink: 255 255 255;
-  --accent-bright: 190 40 35;
-  --silver: 100 100 100;
-  --positive: 90 90 90;
-  --caution: 155 120 35;
-  --critical: 165 30 30;
-  --shadow: 30 30 30;
-  --score-excellent: 165 30 30;
-  --score-good: 90 90 90;
-  --score-mixed: 140 140 140;
-  --score-poor: 190 190 190;
-}
-
 @layer base {
-  * { border-color: rgb(var(--hairline) / 0.06); }
-  html {
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-    scroll-behavior: smooth;
+  :root {
+    color-scheme: dark;
   }
   body {
-    position: relative;
-    min-height: 100dvh;
-    color: rgb(var(--ink));
-    background:
-      radial-gradient(50rem 40rem at 15% -10%, rgb(var(--accent) / 0.05), transparent 55%),
-      radial-gradient(45rem 35rem at 85% 100%, rgb(var(--accent) / 0.03), transparent 50%),
-      linear-gradient(180deg, rgb(var(--canvas)), rgb(var(--canvas-2)));
-    background-attachment: fixed;
-  }
-  body::after {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    opacity: 0.04;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    @apply bg-zinc-950 text-zinc-100 antialiased;
   }
   ::selection {
-    background: rgb(var(--accent) / 0.25);
-    color: rgb(var(--ink));
+    @apply bg-emerald-500/20 text-white;
   }
   :focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px rgb(var(--accent) / 0.5);
-    border-radius: 0.75rem;
+    @apply outline-none ring-2 ring-emerald-500/50 ring-offset-2 ring-offset-zinc-950;
+    border-radius: 0.5rem;
   }
-  * { scrollbar-width: thin; scrollbar-color: rgb(var(--ink-tertiary) / 0.35) transparent; }
-  *::-webkit-scrollbar { width: 7px; height: 7px; }
-  *::-webkit-scrollbar-thumb {
-    background: rgb(var(--ink-tertiary) / 0.3);
-    border-radius: 9999px;
-    border: 2px solid transparent;
-    background-clip: content-box;
-  }
-  .tabular { font-variant-numeric: tabular-nums; }
-  .font-display { font-family: var(--font-display); font-weight: 600; }
-}
-
-@layer components {
-  .material {
-    background: rgb(var(--surface) / 0.72);
-    backdrop-filter: saturate(110%) blur(20px);
-    -webkit-backdrop-filter: saturate(110%) blur(20px);
-  }
-  /* Double-bezel glass card — outer shell + inner highlight, machined feel. */
-  .glass-card {
-    background: linear-gradient(165deg, rgb(var(--surface) / 0.95), rgb(var(--surface) / 0.6));
-    border: 1px solid rgb(var(--hairline) / 0.07);
-    box-shadow:
-      inset 0 1px 0 rgb(var(--hairline) / 0.05),
-      0 10px 30px -12px rgb(var(--shadow) / 0.8);
-  }
-  .tilt {
-    transform-style: preserve-3d;
-    transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.5s cubic-bezier(0.32, 0.72, 0, 1);
-    will-change: transform;
-  }
-  .tilt:hover {
-    transform: translateY(-5px) rotateX(3deg) rotateY(-3deg);
-    box-shadow: 0 20px 50px -18px rgb(var(--accent) / 0.15);
-  }
-  /* Gradient text — muted red sweep, editorial. */
-  .text-gradient {
-    background: linear-gradient(105deg, rgb(var(--accent)), rgb(var(--accent-bright)));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .pill {
-    border: 1px solid rgb(var(--hairline) / 0.08);
-    background: rgb(var(--surface) / 0.4);
-  }
-}
-
-@layer utilities {
-  .perspective { perspective: 1000px; }
-}
-
-@keyframes float-slow {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-12px) rotate(1.5deg); }
-}
-@keyframes drift {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(2%, -3%) scale(1.02); }
-  66% { transform: translate(-2%, 2%) scale(0.98); }
-}
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-@keyframes pop-in {
-  0% { opacity: 0; transform: scale(0.88) translateY(8px); }
-  70% { transform: scale(1.02) translateY(0); }
-  100% { opacity: 1; transform: scale(1); }
-}
-.animate-float { animation: float-slow 8s ease-in-out infinite; }
-.animate-drift { animation: drift 20s ease-in-out infinite; }
-.animate-marquee { animation: marquee 35s linear infinite; }
-.animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.32, 0.72, 0, 1) both; }
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-  }
-  .tilt:hover { transform: translateY(-2px); }
 }

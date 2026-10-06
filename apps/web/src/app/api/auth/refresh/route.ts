@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server';
 import { backendAuth, clearRefreshCookie, readRefreshCookie, setRefreshCookie } from '@/lib/bff';
 
-/**
- * BFF: rotate the refresh token. Reads the httpOnly cookie, calls the backend
- * (which rotates + detects reuse), sets the new cookie, and returns a fresh
- * access token. On failure the cookie is cleared so the client logs out.
- */
 export async function POST() {
   const refreshToken = readRefreshCookie();
   if (!refreshToken) {

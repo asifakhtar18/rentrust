@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { API_BASE_URL } from '@/lib/api';
 import { clearRefreshCookie, readRefreshCookie } from '@/lib/bff';
 
-/** BFF: revoke the refresh token on the backend and clear the cookie. */
 export async function POST() {
   const refreshToken = readRefreshCookie();
   if (refreshToken) {

@@ -3,34 +3,31 @@ import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react
 import { forwardRef } from 'react';
 import { cn } from '@/lib/cn';
 
-/* -------------------------------------------------------------------------- */
-/* Button — pill-shaped, Apple-style weights with a quiet press settle.        */
-/* -------------------------------------------------------------------------- */
+/* Buttons — Linear/Vercel feel: tight radius, hairline borders, tactile press. */
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type ButtonSize = 'sm' | 'md' | 'lg';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Size = 'sm' | 'md' | 'lg';
 
-const buttonBase =
-  'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-200 ' +
-  'ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.95] hover:-translate-y-0.5 ' +
-  'disabled:opacity-40 disabled:pointer-events-none disabled:translate-y-0 select-none';
+const base =
+  'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 ' +
+  'active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none select-none whitespace-nowrap';
 
-const buttonVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-accent-ink hover:shadow-glow',
-  secondary: 'pill text-ink hover:bg-surface-raised',
-  ghost: 'text-ink-secondary hover:text-ink hover:bg-ink/5',
-  danger: 'bg-critical text-white hover:shadow-glow-coral',
+const variants: Record<Variant, string> = {
+  primary: 'bg-emerald-500 text-emerald-950 hover:bg-emerald-400 shadow-subtle',
+  secondary: 'bg-zinc-900 text-zinc-100 border border-zinc-800 hover:bg-zinc-800 hover:border-zinc-700',
+  ghost: 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900',
+  danger: 'bg-red-500/90 text-white hover:bg-red-500',
 };
 
-const buttonSizes: Record<ButtonSize, string> = {
-  sm: 'h-9 px-4 text-footnote',
-  md: 'h-11 px-6 text-body',
-  lg: 'h-13 px-8 text-callout',
+const sizes: Record<Size, string> = {
+  sm: 'h-8 px-3 text-sm',
+  md: 'h-10 px-4 text-sm',
+  lg: 'h-11 px-5 text-[15px]',
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+  variant?: Variant;
+  size?: Size;
   loading?: boolean;
 }
 
@@ -41,7 +38,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   return (
     <button
       ref={ref}
-      className={cn(buttonBase, buttonVariants[variant], buttonSizes[size], className)}
+      className={cn(base, variants[variant], sizes[size], className)}
       disabled={disabled || loading}
       {...props}
     >
@@ -59,16 +56,13 @@ export function LinkButton({
   children,
 }: {
   href: string;
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+  variant?: Variant;
+  size?: Size;
   className?: string;
   children: ReactNode;
 }) {
   return (
-    <Link
-      href={href}
-      className={cn(buttonBase, buttonVariants[variant], buttonSizes[size], className)}
-    >
+    <Link href={href} className={cn(base, variants[variant], sizes[size], className)}>
       {children}
     </Link>
   );
@@ -78,85 +72,68 @@ export function Spinner({ className }: { className?: string }) {
   return (
     <span
       aria-hidden
-      className={cn(
-        'inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent opacity-70',
-        className,
-      )}
+      className={cn('inline-block size-4 animate-spin rounded-full border-2 border-current border-r-transparent opacity-70', className)}
     />
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Card — a soft, raised material. Used sparingly, not as the whole page.      */
-/* -------------------------------------------------------------------------- */
-
+/* Card — subtle zinc surface, hairline border, soft hover lift. */
 export function Card({
   children,
   className,
   as: As = 'div',
+  interactive = false,
 }: {
   children: ReactNode;
   className?: string;
   as?: 'div' | 'section' | 'article';
-}) {
-  return <As className={cn('glass-card rounded-2xl', className)}>{children}</As>;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Badge / Pill                                                                */
-/* -------------------------------------------------------------------------- */
-
-type BadgeTone = 'neutral' | 'accent' | 'positive' | 'caution' | 'critical';
-
-const badgeTones: Record<BadgeTone, string> = {
-  neutral: 'bg-ink/5 text-ink-secondary',
-  accent: 'bg-accent/10 text-accent',
-  positive: 'bg-positive/10 text-positive',
-  caution: 'bg-caution/10 text-caution',
-  critical: 'bg-critical/10 text-critical',
-};
-
-export function Badge({
-  children,
-  tone = 'neutral',
-  className,
-}: {
-  children: ReactNode;
-  tone?: BadgeTone;
-  className?: string;
+  interactive?: boolean;
 }) {
   return (
-    <span
+    <As
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-caption font-medium',
-        badgeTones[tone],
+        'rounded-xl border border-zinc-800/80 bg-zinc-900/40',
+        interactive && 'transition-colors duration-200 hover:border-zinc-700 hover:bg-zinc-900/70',
         className,
       )}
+    >
+      {children}
+    </As>
+  );
+}
+
+/* Badge */
+type Tone = 'neutral' | 'accent' | 'positive' | 'caution' | 'critical';
+const tones: Record<Tone, string> = {
+  neutral: 'bg-zinc-800/80 text-zinc-300 ring-zinc-700/50',
+  accent: 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
+  positive: 'bg-emerald-500/10 text-emerald-400 ring-emerald-500/20',
+  caution: 'bg-amber-500/10 text-amber-400 ring-amber-500/20',
+  critical: 'bg-red-500/10 text-red-400 ring-red-500/20',
+};
+
+export function Badge({ children, tone = 'neutral', className }: { children: ReactNode; tone?: Tone; className?: string }) {
+  return (
+    <span
+      className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset', tones[tone], className)}
     >
       {children}
     </span>
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* Input + Field                                                               */
-/* -------------------------------------------------------------------------- */
-
+/* Input + Field */
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   invalid?: boolean;
 }
-
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { className, invalid, ...props },
-  ref,
-) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, invalid, ...props }, ref) {
   return (
     <input
       ref={ref}
       className={cn(
-        'h-11 w-full rounded-xl bg-canvas px-4 text-body text-ink placeholder:text-ink-tertiary',
-        'border transition-colors duration-150 ease-out',
-        invalid ? 'border-critical/60' : 'border-hairline/15 focus:border-accent/50',
+        'h-10 w-full rounded-lg border bg-zinc-900/60 px-3 text-sm text-zinc-100 placeholder:text-zinc-500',
+        'transition-colors duration-150 focus:bg-zinc-900',
+        invalid ? 'border-red-500/60' : 'border-zinc-800 focus:border-emerald-500/50',
         className,
       )}
       {...props}
@@ -179,15 +156,11 @@ export function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={htmlFor} className="block text-footnote font-medium text-ink-secondary">
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-zinc-300">
         {label}
       </label>
       {children}
-      {error ? (
-        <p className="text-caption text-critical">{error}</p>
-      ) : hint ? (
-        <p className="text-caption text-ink-tertiary">{hint}</p>
-      ) : null}
+      {error ? <p className="text-xs text-red-400">{error}</p> : hint ? <p className="text-xs text-zinc-500">{hint}</p> : null}
     </div>
   );
 }

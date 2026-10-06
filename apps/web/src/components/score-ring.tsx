@@ -1,23 +1,20 @@
 import { cn } from '@/lib/cn';
 
-/**
- * Resident Trust Score ring. An SVG arc that fills proportional to the 0–100
- * score, coloured by band, with the number in tabular figures at the centre.
- * The track + arc use round caps and a soft gradient so it reads as a crafted
- * dial, not a stock progress ring.
- */
+const bands = [
+  { min: 80, color: '#10b981', label: 'Excellent' },
+  { min: 65, color: '#a3a3a3', label: 'Good' },
+  { min: 45, color: '#f59e0b', label: 'Mixed' },
+  { min: 0, color: '#ef4444', label: 'Poor' },
+] as const;
 
-export function scoreBand(score: number): { tone: string; label: string } {
-  if (score >= 80) return { tone: 'var(--score-excellent)', label: 'Excellent' };
-  if (score >= 65) return { tone: 'var(--score-good)', label: 'Good' };
-  if (score >= 45) return { tone: 'var(--score-mixed)', label: 'Mixed' };
-  return { tone: 'var(--score-poor)', label: 'Poor' };
+export function scoreBand(score: number) {
+  return bands.find((b) => score >= b.min) ?? bands[bands.length - 1];
 }
 
 export function ScoreRing({
   score,
-  size = 132,
-  stroke = 12,
+  size = 120,
+  stroke = 10,
   label = true,
   className,
 }: {
@@ -27,10 +24,10 @@ export function ScoreRing({
   label?: boolean;
   className?: string;
 }) {
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(100, score));
-  const dash = (clamped / 100) * circumference;
+  const dash = (clamped / 100) * circ;
   const band = scoreBand(clamped);
 
   return (
@@ -41,56 +38,39 @@ export function ScoreRing({
       aria-label={`Trust score ${clamped} out of 100, ${band.label}`}
     >
       <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-zinc-800/60" />
         <circle
           cx={size / 2}
           cy={size / 2}
-          r={radius}
+          r={r}
           fill="none"
-          stroke="rgb(var(--ink) / 0.08)"
-          strokeWidth={stroke}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={`rgb(${band.tone})`}
+          stroke={band.color}
           strokeWidth={stroke}
           strokeLinecap="round"
-          strokeDasharray={`${dash} ${circumference - dash}`}
-          style={{ transition: 'stroke-dasharray 0.8s cubic-bezier(0.16,1,0.3,1)' }}
+          strokeDasharray={`${dash} ${circ - dash}`}
+          style={{ transition: 'stroke-dasharray 0.7s cubic-bezier(0.16,1,0.3,1)' }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="tabular text-title1 font-semibold leading-none text-ink">{clamped}</span>
-        {label && <span className="mt-1 text-caption text-ink-tertiary">of 100</span>}
+        <span className="tabular-nums text-2xl font-semibold text-zinc-100">{clamped}</span>
+        {label && <span className="mt-0.5 text-[11px] text-zinc-500">/100</span>}
       </div>
     </div>
   );
 }
 
-/** Horizontal category bar used in the score breakdown. */
-export function CategoryBar({ label, score, sampleSize }: { label: string; score: number; sampleSize?: number }) {
+export function CategoryBar({ label: title, score }: { label: string; score: number }) {
   const band = scoreBand(score);
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-baseline justify-between">
-        <span className="text-footnote text-ink-secondary">{label}</span>
-        <span className="tabular text-footnote font-medium text-ink">
-          {score}
-          {sampleSize != null && (
-            <span className="ml-1.5 text-ink-tertiary">· {sampleSize}</span>
-          )}
-        </span>
+    <div className="space-y-1">
+      <div className="flex items-baseline justify-between text-sm">
+        <span className="text-zinc-400">{title}</span>
+        <span className="tabular-nums font-medium text-zinc-200">{score}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-ink/8">
+      <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800/80">
         <div
-          className="h-full rounded-full"
-          style={{
-            width: `${Math.max(2, score)}%`,
-            background: `rgb(${band.tone})`,
-            transition: 'width 0.8s cubic-bezier(0.16,1,0.3,1)',
-          }}
+          className="h-full rounded-full transition-all duration-700"
+          style={{ width: `${Math.max(2, score)}%`, backgroundColor: band.color }}
         />
       </div>
     </div>

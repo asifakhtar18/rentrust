@@ -1,5 +1,3 @@
-/** Human-readable labels for backend enum keys used across the UI. */
-
 export const CATEGORY_LABELS: Record<string, string> = {
   management: 'Management',
   maintenance: 'Maintenance',
@@ -29,7 +27,6 @@ export const PROPERTY_TYPE_LABELS: Record<string, string> = {
   BUILDER_PROPERTY: 'Builder property',
 };
 
-/** Turns a snake_case tag into a readable phrase. */
 export function humanizeTag(tag: string): string {
   return tag.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
 }

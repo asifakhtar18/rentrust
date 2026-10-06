@@ -1,16 +1,6 @@
 import type { ApiMeta } from './types';
 
-/**
- * API access. Two layers:
- *  - `apiFetch` is a low-level typed fetch against the backend that unwraps the
- *    standard `{ success, data, meta }` envelope and throws a typed ApiError on
- *    failure. Used directly for public/server reads.
- *  - The browser client (see auth-context) adds the in-memory access token and
- *    401→refresh→retry via the Next.js BFF route handlers.
- */
-
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
 
 export class ApiError extends Error {
   constructor(
@@ -51,7 +41,6 @@ export async function apiFetch<T>(
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(headers ?? {}),
     },
-    // Server reads should not be cached stale by default.
     cache: rest.cache ?? 'no-store',
   });
 
@@ -64,16 +53,11 @@ export async function apiFetch<T>(
 
   if (!body || body.success === false) {
     const err = body as EnvelopeError | null;
-    throw new ApiError(
-      err?.error.code ?? 'UNKNOWN',
-      err?.error.message ?? 'Request failed',
-      res.status,
-    );
+    throw new ApiError(err?.error.code ?? 'UNKNOWN', err?.error.message ?? 'Request failed', res.status);
   }
   return { data: body.data, meta: body.meta ?? {} };
 }
 
-/** Builds a query string from a record, skipping null/undefined. */
 export function qs(params: Record<string, string | number | boolean | undefined | null>): string {
   const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
   if (entries.length === 0) return '';
