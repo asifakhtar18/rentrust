@@ -29,9 +29,9 @@ export function SearchBar({
         if (q.trim()) router.push(`/search?q=${encodeURIComponent(q.trim())}`);
       }}
       className={cn(
-        'group flex items-center gap-3 rounded-full bg-surface shadow-card ring-1 ring-hairline/10',
-        'transition-shadow duration-300 ease-out focus-within:shadow-raised',
-        size === 'lg' ? 'h-14 px-5' : 'h-11 px-4',
+        'group flex items-center gap-3 rounded-full glass-card ring-1 ring-hairline/8',
+        'transition-all duration-300 ease-out focus-within:shadow-glow focus-within:ring-accent/30',
+        size === 'lg' ? 'h-16 px-6' : 'h-12 px-5',
       )}
     >
       <svg
@@ -58,8 +58,8 @@ export function SearchBar({
       <button
         type="submit"
         className={cn(
-          'shrink-0 rounded-full bg-accent font-medium text-accent-ink transition-all duration-200 ease-out active:scale-95',
-          size === 'lg' ? 'h-10 px-5 text-footnote' : 'h-8 px-4 text-caption',
+          'shrink-0 rounded-full bg-accent font-semibold text-accent-ink transition-all duration-200 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:shadow-glow active:scale-95',
+          size === 'lg' ? 'h-11 px-6 text-footnote' : 'h-9 px-4 text-caption',
         )}
       >
         Search

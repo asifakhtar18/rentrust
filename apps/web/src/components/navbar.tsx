@@ -23,8 +23,10 @@ export function Navbar() {
     <Link
       href={href}
       className={cn(
-        'rounded-full px-3 py-1.5 text-footnote transition-colors',
-        pathname === href ? 'text-ink' : 'text-ink-secondary hover:text-ink',
+        'rounded-full px-3.5 py-1.5 text-footnote font-medium transition-all duration-200 ease-out',
+        pathname === href
+          ? 'bg-accent/10 text-accent'
+          : 'text-ink-secondary hover:text-ink hover:bg-ink/5',
       )}
     >
       {label}
@@ -34,9 +36,9 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 material border-b border-hairline/10">
       <nav className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-5">
-        <Link href="/" className="mr-2 flex items-center gap-2">
+        <Link href="/" className="mr-3 flex items-center gap-2.5">
           <Logo />
-          <span className="text-callout font-semibold tracking-tight text-ink">RentTrust</span>
+          <span className="font-display text-callout tracking-tight text-ink">RentTrust</span>
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
@@ -119,8 +121,11 @@ function MenuLink({ href, children, onClick }: { href: string; children: string;
 
 function Logo() {
   return (
-    <span className="flex size-8 items-center justify-center rounded-xl bg-accent text-accent-ink shadow-sm">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <span
+      className="flex size-9 items-center justify-center rounded-xl text-accent-ink shadow-glow"
+      style={{ background: 'linear-gradient(135deg, rgb(var(--accent)), rgb(var(--violet)))' }}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path
           d="M12 3.2 4.5 8.4v9.1c0 .6.5 1.1 1.1 1.1h3.1v-5.3c0-.6.5-1.1 1.1-1.1h4.2c.6 0 1.1.5 1.1 1.1v5.3h3.1c.6 0 1.1-.5 1.1-1.1V8.4L12 3.2Z"
           fill="currentColor"

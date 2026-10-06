@@ -11,14 +11,15 @@ type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 const buttonBase =
-  'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all duration-200 ease-out ' +
-  'active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none select-none';
+  'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all duration-200 ' +
+  'ease-[cubic-bezier(0.34,1.56,0.64,1)] active:scale-[0.95] hover:-translate-y-0.5 ' +
+  'disabled:opacity-40 disabled:pointer-events-none disabled:translate-y-0 select-none';
 
 const buttonVariants: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-accent-ink hover:brightness-110 shadow-sm',
-  secondary: 'bg-surface text-ink border border-hairline/15 hover:bg-canvas shadow-sm',
-  ghost: 'text-ink hover:bg-ink/5',
-  danger: 'bg-critical text-white hover:brightness-110 shadow-sm',
+  primary: 'bg-accent text-accent-ink hover:shadow-glow',
+  secondary: 'pill text-ink hover:bg-surface-raised',
+  ghost: 'text-ink-secondary hover:text-ink hover:bg-ink/5',
+  danger: 'bg-critical text-white hover:shadow-glow-coral',
 };
 
 const buttonSizes: Record<ButtonSize, string> = {
@@ -98,9 +99,7 @@ export function Card({
   className?: string;
   as?: 'div' | 'section' | 'article';
 }) {
-  return (
-    <As className={cn('rounded-2xl bg-surface shadow-card', className)}>{children}</As>
-  );
+  return <As className={cn('glass-card rounded-2xl', className)}>{children}</As>;
 }
 
 /* -------------------------------------------------------------------------- */

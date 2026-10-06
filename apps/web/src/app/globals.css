@@ -1,59 +1,66 @@
+@import url('https://fonts.googleapis.com/css2?family=Clash+Display:wght@500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /*
- * RentTrust design tokens — DARK-FIRST ("Deep Blue Sea").
- * Deep navy world lit by a bright teal/aqua accent. Navy signals authority;
- * teal signals trust + clarity without the generic fintech-blue or eco-green.
- * The default (:root) is dark; light is opt-in via [data-theme="light"].
+ * RentTrust — DARK-FIRST, bold & playful (Gen-Z "night-market" energy).
+ * Deep navy world, vivid teal/coral/amber neon, aurora gradients, grain
+ * texture, 3D tilt cards, springy motion. All data is real; nothing is faked.
  */
 :root {
-  /* Surfaces — deep navy stack */
-  --canvas: 14 19 39;          /* #0E1327 deep navy */
-  --surface: 23 30 54;         /* raised panel */
-  --surface-raised: 36 48 76;  /* popover / dropdown */
-  --hairline: 226 236 240;     /* cool white, low alpha for borders */
+  --canvas: 11 15 32;          /* deep ink navy */
+  --canvas-2: 16 22 46;        /* second gradient stop */
+  --surface: 22 29 56;         /* raised panel */
+  --surface-raised: 32 42 76;  /* popover */
+  --hairline: 226 236 240;
 
-  /* Text — cool off-white */
-  --ink: 230 238 243;
-  --ink-secondary: 165 178 196;
-  --ink-tertiary: 116 130 152;
+  --ink: 234 240 246;
+  --ink-secondary: 170 183 203;
+  --ink-tertiary: 120 134 158;
 
-  /* Accent — bright teal / aqua */
-  --accent: 94 234 212;        /* #5EEAD4 */
-  --accent-ink: 7 20 24;       /* near-black on aqua for contrast */
+  /* Vivid neon trio on dark */
+  --accent: 45 240 206;        /* electric aqua */
+  --accent-ink: 6 20 22;
+  --violet: 149 118 255;       /* playful violet */
+  --coral: 255 122 108;        /* hot coral */
+  --amber: 255 196 84;         /* warm amber */
 
-  /* Semantic */
-  --positive: 94 234 212;      /* aqua reads as positive here */
-  --caution: 240 190 90;       /* warm amber for contrast against cool base */
-  --critical: 244 120 110;     /* soft coral, not alarming */
+  --positive: 45 240 206;
+  --caution: 255 196 84;
+  --critical: 255 122 108;
 
   --shadow: 0 0 0;
-  --score-excellent: 94 234 212;  /* aqua */
-  --score-good: 64 196 190;      /* teal */
-  --score-mixed: 240 190 90;     /* amber */
-  --score-poor: 244 120 110;     /* coral */
+  --score-excellent: 45 240 206;
+  --score-good: 149 118 255;
+  --score-mixed: 255 196 84;
+  --score-poor: 255 122 108;
+
+  --font-display: 'Clash Display', 'Inter', system-ui, sans-serif;
 }
 
 [data-theme='light'] {
-  --canvas: 240 244 248;       /* cool off-white */
+  --canvas: 244 246 251;
+  --canvas-2: 236 240 249;
   --surface: 255 255 255;
   --surface-raised: 255 255 255;
-  --hairline: 20 28 48;
-  --ink: 18 26 44;
-  --ink-secondary: 70 84 108;
-  --ink-tertiary: 128 142 164;
-  --accent: 13 148 136;        /* teal-600, deep enough for contrast on light */
+  --hairline: 18 26 44;
+  --ink: 18 24 42;
+  --ink-secondary: 72 84 108;
+  --ink-tertiary: 126 140 164;
+  --accent: 13 160 145;
   --accent-ink: 255 255 255;
-  --positive: 15 118 110;
-  --caution: 180 120 20;
-  --critical: 200 60 55;
-  --shadow: 18 26 44;
-  --score-excellent: 13 148 136;
-  --score-good: 20 160 150;
-  --score-mixed: 170 120 30;
-  --score-poor: 200 60 55;
+  --violet: 109 76 230;
+  --coral: 226 72 60;
+  --amber: 180 120 20;
+  --positive: 15 140 120;
+  --caution: 176 118 20;
+  --critical: 206 60 50;
+  --shadow: 18 24 42;
+  --score-excellent: 13 160 145;
+  --score-good: 109 76 230;
+  --score-mixed: 176 118 20;
+  --score-poor: 206 60 50;
 }
 
 @layer base {
@@ -66,29 +73,46 @@
     scroll-behavior: smooth;
   }
   body {
-    background-color: rgb(var(--canvas));
+    position: relative;
+    min-height: 100dvh;
     color: rgb(var(--ink));
+    background:
+      radial-gradient(60rem 40rem at 10% -10%, rgb(var(--violet) / 0.14), transparent 60%),
+      radial-gradient(55rem 38rem at 100% 0%, rgb(var(--accent) / 0.12), transparent 55%),
+      radial-gradient(50rem 40rem at 50% 120%, rgb(var(--coral) / 0.10), transparent 60%),
+      linear-gradient(180deg, rgb(var(--canvas)), rgb(var(--canvas-2)));
+    background-attachment: fixed;
+  }
+  /* Subtle film grain overlay — texture without weight. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   ::selection {
-    background: rgb(var(--accent) / 0.25);
+    background: rgb(var(--accent) / 0.3);
     color: rgb(var(--ink));
   }
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.45);
-    border-radius: 0.5rem;
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.5);
+    border-radius: 0.75rem;
   }
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(var(--ink-tertiary) / 0.35) transparent;
+    scrollbar-color: rgb(var(--ink-tertiary) / 0.4) transparent;
   }
   *::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
   }
   *::-webkit-scrollbar-thumb {
-    background: rgb(var(--ink-tertiary) / 0.3);
+    background: rgb(var(--ink-tertiary) / 0.35);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: content-box;
@@ -96,23 +120,101 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  .font-display {
+    font-family: var(--font-display);
+    font-weight: 600;
+  }
 }
 
+@layer components {
+  /* Glass material for nav + overlays. */
+  .material {
+    background: rgb(var(--surface) / 0.6);
+    backdrop-filter: saturate(160%) blur(20px);
+    -webkit-backdrop-filter: saturate(160%) blur(20px);
+  }
+
+  /* Card with a glassy edge + inner highlight — reads as a floating slab. */
+  .glass-card {
+    background: linear-gradient(
+      160deg,
+      rgb(var(--surface) / 0.9),
+      rgb(var(--surface) / 0.6)
+    );
+    border: 1px solid rgb(var(--hairline) / 0.1);
+    box-shadow:
+      0 1px 0 rgb(var(--hairline) / 0.08) inset,
+      0 10px 30px -12px rgb(var(--shadow) / 0.7);
+  }
+
+  /* 3D tilt container — children get perspective; hover lifts + glows. */
+  .tilt {
+    transform-style: preserve-3d;
+    transition:
+      transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+  .tilt:hover {
+    transform: translateY(-4px) rotateX(4deg) rotateY(-4deg);
+    box-shadow: 0 24px 60px -20px rgb(var(--accent) / 0.3);
+  }
+
+  /* Gradient text for playful display accents (used sparingly). */
+  .text-gradient {
+    background: linear-gradient(100deg, rgb(var(--accent)), rgb(var(--violet)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .pill {
+    border: 1px solid rgb(var(--hairline) / 0.12);
+    background: rgb(var(--surface) / 0.5);
+  }
+}
+
+@layer utilities {
+  .perspective {
+    perspective: 1000px;
+  }
+}
+
+/* ---- Keyframes (component animations live in tailwind config too) ---- */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(3deg); }
+}
+@keyframes drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(3%, -4%) scale(1.05); }
+  66% { transform: translate(-3%, 3%) scale(0.97); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+  70% { transform: scale(1.04) translateY(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.animate-float { animation: float-slow 7s ease-in-out infinite; }
+.animate-drift { animation: drift 18s ease-in-out infinite; }
+.animate-marquee { animation: marquee 32s linear infinite; }
+.animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *, *::before, *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-@layer components {
-  .material {
-    background: rgb(var(--surface) / 0.72);
-    backdrop-filter: saturate(130%) blur(18px);
-    -webkit-backdrop-filter: saturate(130%) blur(18px);
-  }
+  .tilt:hover { transform: translateY(-2px); }
 }
