@@ -134,6 +134,34 @@ export interface PublicReview {
   createdAt: string;
 }
 
+export type ReviewStatus =
+  | 'DRAFT'
+  | 'PENDING_MODERATION'
+  | 'PUBLISHED'
+  | 'REJECTED'
+  | 'HIDDEN'
+  | 'UNDER_REVIEW'
+  | 'REMOVED';
+
+/** A saved property row from /me/saved: public property + its score + savedAt. */
+export interface SavedProperty extends Property {
+  score: TrustScore;
+  savedAt: string;
+}
+
+/** The authenticated user's own review (any status) from /me/reviews. */
+export interface MyReview {
+  id: string;
+  propertyId: string;
+  status: ReviewStatus;
+  isVerified: boolean;
+  tenure: TenureBucket;
+  overall: number | null;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Search ----
 
 export interface SearchHit {
