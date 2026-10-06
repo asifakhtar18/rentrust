@@ -123,7 +123,7 @@ function Logo() {
   return (
     <span
       className="flex size-9 items-center justify-center rounded-xl text-accent-ink shadow-glow"
-      style={{ background: 'linear-gradient(135deg, rgb(var(--accent)), rgb(var(--violet)))' }}
+      style={{ background: 'linear-gradient(135deg, rgb(var(--accent)), rgb(var(--accent-bright)))' }}
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
         <path

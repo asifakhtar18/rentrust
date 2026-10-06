@@ -44,7 +44,7 @@ export default async function HomePage() {
     <div className="relative z-[2]">
       {/* ── HERO ── */}
       <section className="relative overflow-hidden px-5 pb-16 pt-16 sm:pt-24">
-        {/* Floating shapes for character and depth */}
+      {/* Floating shapes for character and depth */}
         <FloatingShapes />
 
         <div className="mx-auto max-w-5xl text-center">
@@ -124,13 +124,13 @@ export default async function HomePage() {
             },
             {
               num: '02',
-              color: 'text-violet',
+              color: 'text-silver',
               title: 'See the full picture',
               body: 'Structured reviews, deposit outcomes, safety, management — not just a star rating.',
             },
             {
               num: '03',
-              color: 'text-coral',
+              color: 'text-ink-tertiary',
               title: 'Decide with confidence',
               body: 'Compare properties, read locality intelligence, save what you like.',
             },
@@ -250,7 +250,7 @@ function FloatingShapes() {
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
       {/* Triangle */}
       <svg
-        className="absolute left-[8%] top-[12%] size-16 animate-float text-accent/20 [animation-delay:0s]"
+        className="absolute left-[8%] top-[12%] size-16 animate-float text-accent/15 [animation-delay:0s]"
         viewBox="0 0 80 80"
         fill="none"
       >
@@ -258,7 +258,7 @@ function FloatingShapes() {
       </svg>
       {/* Circle */}
       <svg
-        className="absolute right-[12%] top-[20%] size-12 animate-float text-violet/25 [animation-delay:1.5s]"
+        className="absolute right-[12%] top-[20%] size-12 animate-float text-silver/20 [animation-delay:1.5s]"
         viewBox="0 0 60 60"
         fill="none"
       >
@@ -266,7 +266,7 @@ function FloatingShapes() {
       </svg>
       {/* Diamond */}
       <svg
-        className="absolute bottom-[25%] left-[15%] size-10 animate-float text-coral/20 [animation-delay:3s]"
+        className="absolute bottom-[25%] left-[15%] size-10 animate-float text-ink-tertiary/20 [animation-delay:3s]"
         viewBox="0 0 50 50"
         fill="none"
       >
@@ -274,7 +274,7 @@ function FloatingShapes() {
       </svg>
       {/* Cross */}
       <svg
-        className="absolute bottom-[30%] right-[10%] size-8 animate-float text-amber/20 [animation-delay:2s]"
+        className="absolute bottom-[30%] right-[10%] size-8 animate-float text-accent/12 [animation-delay:2s]"
         viewBox="0 0 40 40"
         fill="none"
       >
