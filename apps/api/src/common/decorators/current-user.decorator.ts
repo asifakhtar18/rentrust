@@ -20,12 +20,14 @@ export const CurrentUser = createParamDecorator(
   (
     data: keyof AuthUser | undefined,
     ctx: ExecutionContext,
-  ): AuthUser | AuthUser[keyof AuthUser] => {
+  ): AuthUser | AuthUser[keyof AuthUser] | undefined => {
     const request = ctx.switchToHttp().getRequest<{ user?: AuthUser }>();
     const user = request.user;
+    // On @OptionalAuth() routes an anonymous caller has no user; return
+    // undefined so the handler can decide. On fully-guarded routes the guard
+    // guarantees a user before the handler runs.
     if (!user) {
-      // Should never happen on a guarded route; signals a wiring mistake.
-      throw new Error('CurrentUser used on a route without JwtAuthGuard');
+      return undefined;
     }
     return data ? user[data] : user;
   },
