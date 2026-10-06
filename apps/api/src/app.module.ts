@@ -20,6 +20,7 @@ import { VerificationModule } from './verification/verification.module';
 import { EventsModule } from './events/events.module';
 import { QueueModule } from './queue/queue.module';
 import { TrustScoreModule } from './trust-score/trust-score.module';
+import { SearchModule } from './search/search.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -86,6 +87,7 @@ import { AppConfig } from './config/configuration';
     ReviewsModule,
     VerificationModule,
     TrustScoreModule,
+    SearchModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
