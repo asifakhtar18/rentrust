@@ -1,47 +1,64 @@
+/* ------------------------------------------------------------------ */
+/*  Server-only BFF helpers. These run in Next.js route handlers and   */
+/*  server components — never shipped to the browser.                  */
+/* ------------------------------------------------------------------ */
+
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { API_BASE_URL } from './api';
 
-const REFRESH_COOKIE = 'rt';
-const isProd = process.env.NODE_ENV === 'production';
+const COOKIE_NAME = 'rt';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
 
-export interface BackendTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-}
+// ---- Cookie helpers ----
 
-export function setRefreshCookie(res: NextResponse, refreshToken: string): void {
-  res.cookies.set(REFRESH_COOKIE, refreshToken, {
+/**
+ * Sets the refresh-token cookie on a NextResponse.
+ * httpOnly + secure + sameSite=lax + path=/ — never readable from JS.
+ */
+export function setRefreshCookie(res: NextResponse, refreshToken: string) {
+  res.cookies.set(COOKIE_NAME, refreshToken, {
     httpOnly: true,
-    secure: isProd,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   });
 }
 
-export function clearRefreshCookie(res: NextResponse): void {
-  res.cookies.set(REFRESH_COOKIE, '', { httpOnly: true, path: '/', maxAge: 0 });
+/** Clears the refresh-token cookie on a NextResponse. */
+export function clearRefreshCookie(res: NextResponse) {
+  res.cookies.set(COOKIE_NAME, '', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
 }
 
-export function readRefreshCookie(): string | undefined {
-  return cookies().get(REFRESH_COOKIE)?.value;
+/** Reads the refresh-token from the incoming request cookies. */
+export async function readRefreshCookie(): Promise<string | undefined> {
+  const store = await cookies();
+  return store.get(COOKIE_NAME)?.value;
 }
 
-export async function backendAuth(
+// ---- Backend proxy helper ----
+
+/**
+ * Forwards a request to the backend auth endpoint with the correct
+ * Content-Type header. Returns the parsed JSON body.
+ */
+export async function backendAuth<T>(
   path: string,
-  payload: Record<string, unknown>,
-): Promise<{ ok: true; tokens: BackendTokens } | { ok: false; status: number; body: unknown }> {
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; status: number; data: T }> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    cache: 'no-store',
+    body: JSON.stringify(body),
   });
-  const body = (await res.json().catch(() => null)) as { success: boolean; data?: BackendTokens } | null;
-  if (!res.ok || !body?.success || !body.data) {
-    return { ok: false, status: res.status, body };
-  }
-  return { ok: true, tokens: body.data };
+
+  const json = await res.json();
+  return { ok: res.ok, status: res.status, data: json };
 }

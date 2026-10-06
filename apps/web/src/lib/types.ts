@@ -1,3 +1,10 @@
+/* ------------------------------------------------------------------ */
+/*  Shared TypeScript types for the RenTrust web client.               */
+/*  These mirror the backend API response shapes exactly.              */
+/* ------------------------------------------------------------------ */
+
+// ---- Enums (mirrors Prisma enums) ----
+
 export type PropertyType =
   | 'APARTMENT'
   | 'PG'
@@ -9,17 +16,27 @@ export type PropertyType =
 
 export type UserRole = 'USER' | 'OWNER' | 'MANAGER' | 'MODERATOR' | 'ADMIN';
 
+export type TenureBucket =
+  | 'LT_3_MONTHS'
+  | 'M3_6'
+  | 'M6_12'
+  | 'Y1_2'
+  | 'GT_2_YEARS';
+
+export type TriState = 'YES' | 'NO' | 'MAYBE';
+
+export type NotificationChannel = 'IN_APP' | 'EMAIL';
+export type NotificationStatus = 'PENDING' | 'SENT' | 'READ' | 'FAILED';
+export type SearchEntityType = 'property' | 'landlord' | 'locality';
+
+// ---- API envelope ----
+
 export interface ApiMeta {
   requestId?: string;
-  nextCursor?: string | null;
-  hasMore?: boolean;
-  total?: number;
-  page?: number;
-  pageSize?: number;
-  count?: number;
-  unread?: number;
-  [k: string]: unknown;
+  [key: string]: unknown;
 }
+
+// ---- Auth ----
 
 export interface AuthUser {
   id: string;
@@ -27,7 +44,16 @@ export interface AuthUser {
   displayName: string | null;
   roles: UserRole[];
   emailVerified: boolean;
+  createdAt: string;
 }
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+// ---- Property ----
 
 export interface Property {
   id: string;
@@ -45,8 +71,11 @@ export interface Property {
   amenities: string[];
   description: string | null;
   isClaimed: boolean;
-  distanceMeters?: number;
+  createdAt: string;
+  updatedAt: string;
 }
+
+// ---- Trust score ----
 
 export interface CategoryScore {
   score: number;
@@ -67,24 +96,35 @@ export interface TrustScore {
   lastCalculatedAt: string | null;
 }
 
+// ---- Property detail ----
+
 export interface PropertyDetail extends Property {
-  address: { line1: string | null; postalCode: string | null } | null;
-  locality: { id: string; name: string; slug: string } | null;
-  landlords: Array<{ id: string; displayName: string; role: string }>;
-  managers: Array<{ id: string; displayName: string; role: string }>;
+  address: {
+    line1: string | null;
+    line2: string | null;
+    cityId: string;
+    localityId: string | null;
+    postalCode: string | null;
+  } | null;
+  locality: Locality | null;
+  score: TrustScore | null;
+  landlords: Array<{ id: string; name: string; role: string }>;
+  managers: Array<{ id: string; name: string; role: string }>;
   reviewCount: number;
 }
+
+// ---- Reviews ----
 
 export interface PublicReview {
   id: string;
   propertyId: string;
   isVerified: boolean;
-  tenure: string;
+  tenure: TenureBucket;
   overall: number | null;
   authorAlias: string;
   categoryScores: Record<string, number> | null;
   wouldRecommend: boolean | null;
-  wouldRentAgain: string | null;
+  wouldRentAgain: TriState | null;
   likedTags: string[];
   dislikedTags: string[];
   likedText: string | null;
@@ -94,8 +134,10 @@ export interface PublicReview {
   createdAt: string;
 }
 
+// ---- Search ----
+
 export interface SearchHit {
-  type: 'property' | 'landlord' | 'locality';
+  type: SearchEntityType;
   id: string;
   title: string;
   subtitle?: string;
@@ -105,11 +147,16 @@ export interface SearchHit {
   meta?: Record<string, unknown>;
 }
 
+// ---- Locations ----
+
 export interface Locality {
   id: string;
+  cityId: string;
   name: string;
   slug: string;
-  cityId: string;
+  description: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface LocalityIntelligence {
@@ -125,12 +172,17 @@ export interface LocalityIntelligence {
   commonComplaints?: string[];
 }
 
+// ---- Notifications ----
+
 export interface Notification {
   id: string;
+  userId: string;
+  channel: NotificationChannel;
   type: string;
   title: string;
   body: string;
   data: Record<string, unknown> | null;
+  status: NotificationStatus;
   readAt: string | null;
   createdAt: string;
 }

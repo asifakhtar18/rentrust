@@ -1,18 +1,20 @@
+/* ------------------------------------------------------------------ */
+/*  BFF: POST /api/auth/logout                                         */
+/*  Revokes the refresh token on the backend and clears the cookie.    */
+/* ------------------------------------------------------------------ */
+
 import { NextResponse } from 'next/server';
-import { API_BASE_URL } from '@/lib/api';
-import { clearRefreshCookie, readRefreshCookie } from '@/lib/bff';
+import { backendAuth, clearRefreshCookie, readRefreshCookie } from '@/lib/bff';
 
 export async function POST() {
-  const refreshToken = readRefreshCookie();
+  const refreshToken = await readRefreshCookie();
+
   if (refreshToken) {
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-      cache: 'no-store',
-    }).catch(() => undefined);
+    // Best-effort revoke; ignore backend errors so logout always succeeds.
+    await backendAuth('/auth/logout', { refreshToken }).catch(() => {});
   }
-  const res = NextResponse.json({ success: true, data: { ok: true } });
+
+  const res = NextResponse.json({ success: true });
   clearRefreshCookie(res);
   return res;
 }

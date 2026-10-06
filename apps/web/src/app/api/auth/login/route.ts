@@ -1,14 +1,29 @@
+/* ------------------------------------------------------------------ */
+/*  BFF: POST /api/auth/login                                          */
+/*  Proxies to the backend, stores the refresh token in an httpOnly    */
+/*  cookie, and returns only the access token to the client.           */
+/* ------------------------------------------------------------------ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { backendAuth, setRefreshCookie } from '@/lib/bff';
+import type { AuthTokens } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
-  const payload = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-  const result = await backendAuth('/auth/login', payload);
-  if (!result.ok) return NextResponse.json(result.body ?? { success: false }, { status: result.status });
-  const res = NextResponse.json({
-    success: true,
-    data: { accessToken: result.tokens.accessToken, expiresIn: result.tokens.expiresIn },
+  const body = await req.json().catch(() => ({}));
+
+  const { ok, status, data } = await backendAuth<
+    { success: boolean; data: AuthTokens; error?: unknown }
+  >('/auth/login', {
+    email: body.email,
+    password: body.password,
   });
-  setRefreshCookie(res, result.tokens.refreshToken);
+
+  if (!ok) {
+    return NextResponse.json(data, { status });
+  }
+
+  const tokens = data.data;
+  const res = NextResponse.json({ accessToken: tokens.accessToken });
+  setRefreshCookie(res, tokens.refreshToken);
   return res;
 }

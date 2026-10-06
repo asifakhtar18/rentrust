@@ -1,24 +1,41 @@
+/* ------------------------------------------------------------------ */
+/*  BFF: POST /api/auth/refresh                                        */
+/*  Reads the refresh-token cookie, rotates it against the backend,    */
+/*  stores the new refresh token, and returns a fresh access token.    */
+/* ------------------------------------------------------------------ */
+
 import { NextResponse } from 'next/server';
-import { backendAuth, clearRefreshCookie, readRefreshCookie, setRefreshCookie } from '@/lib/bff';
+import {
+  backendAuth,
+  clearRefreshCookie,
+  readRefreshCookie,
+  setRefreshCookie,
+} from '@/lib/bff';
+import type { AuthTokens } from '@/lib/types';
 
 export async function POST() {
-  const refreshToken = readRefreshCookie();
+  const refreshToken = await readRefreshCookie();
+
   if (!refreshToken) {
     return NextResponse.json(
-      { success: false, error: { code: 'UNAUTHORIZED', message: 'No session' } },
+      { error: { code: 'NO_SESSION', message: 'No active session.' } },
       { status: 401 },
     );
   }
-  const result = await backendAuth('/auth/refresh', { refreshToken });
-  if (!result.ok) {
-    const res = NextResponse.json(result.body ?? { success: false }, { status: result.status });
+
+  const { ok, status, data } = await backendAuth<
+    { success: boolean; data: AuthTokens; error?: unknown }
+  >('/auth/refresh', { refreshToken });
+
+  if (!ok) {
+    // The refresh token is stale/invalid — clear the cookie.
+    const res = NextResponse.json(data, { status });
     clearRefreshCookie(res);
     return res;
   }
-  const res = NextResponse.json({
-    success: true,
-    data: { accessToken: result.tokens.accessToken, expiresIn: result.tokens.expiresIn },
-  });
-  setRefreshCookie(res, result.tokens.refreshToken);
+
+  const tokens = data.data;
+  const res = NextResponse.json({ accessToken: tokens.accessToken });
+  setRefreshCookie(res, tokens.refreshToken);
   return res;
 }

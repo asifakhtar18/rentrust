@@ -4,16 +4,32 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   body {
-    @apply bg-zinc-950 text-zinc-100 antialiased;
+    @apply bg-background text-foreground;
   }
   ::selection {
-    @apply bg-emerald-500/20 text-white;
+    @apply bg-brand/15 text-foreground;
   }
   :focus-visible {
-    @apply outline-none ring-2 ring-emerald-500/50 ring-offset-2 ring-offset-zinc-950;
-    border-radius: 0.5rem;
+    @apply outline-none ring-2 ring-brand/40 ring-offset-2 ring-offset-background;
+    border-radius: 6px;
+  }
+  /* Tabular figures for all numeric data (scores, prices, counts). */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

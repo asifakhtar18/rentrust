@@ -1,151 +1,237 @@
 'use client';
 
+/* ------------------------------------------------------------------ */
+/*  Client-side auth context.                                          */
+/*  Holds the access token in memory (never localStorage) and          */
+/*  refreshes it via the BFF /api/auth/refresh route.                  */
+/* ------------------------------------------------------------------ */
+
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { API_BASE_URL, ApiError } from './api';
-import type { ApiMeta, AuthUser } from './types';
+
+import type { AuthUser } from './types';
+import { ApiError } from './api';
+
+// ---- Types ----
 
 interface AuthState {
   user: AuthUser | null;
   loading: boolean;
+}
+
+interface AuthContextValue extends AuthState {
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, displayName?: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    displayName?: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  request: <T>(path: string, init?: RequestInit) => Promise<{ data: T; meta: ApiMeta }>;
+  /** Authenticated fetch: attaches the in-memory access token and retries
+   *  once on 401 after a silent refresh. */
+  request: <T>(path: string, init?: RequestInit) => Promise<T>;
 }
 
-const AuthContext = createContext<AuthState | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+// ---- Provider ----
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const accessToken = useRef<string | null>(null);
-  const refreshing = useRef<Promise<boolean> | null>(null);
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<AuthState>({
+    user: null,
+    loading: true,
+  });
+  const tokenRef = useRef<string | null>(null);
 
-  const doRefresh = useCallback(async (): Promise<boolean> => {
-    if (refreshing.current) return refreshing.current;
-    refreshing.current = (async () => {
-      try {
-        const res = await fetch('/api/auth/refresh', { method: 'POST' });
-        if (!res.ok) {
-          accessToken.current = null;
-          return false;
-        }
-        const body = (await res.json()) as { data: { accessToken: string } };
-        accessToken.current = body.data.accessToken;
-        return true;
-      } catch {
-        accessToken.current = null;
-        return false;
-      } finally {
-        refreshing.current = null;
-      }
-    })();
-    return refreshing.current;
+  // -- internal helpers --
+
+  /** Call the BFF refresh endpoint to get a new access token. */
+  const silentRefresh = useCallback(async (): Promise<string | null> => {
+    try {
+      const res = await fetch('/api/auth/refresh', { method: 'POST' });
+      if (!res.ok) return null;
+      const body = await res.json();
+      tokenRef.current = body.accessToken ?? null;
+      return tokenRef.current;
+    } catch {
+      return null;
+    }
   }, []);
 
-  const request = useCallback(
-    async <T,>(path: string, init: RequestInit = {}): Promise<{ data: T; meta: ApiMeta }> => {
-      const call = () =>
-        fetch(`${API_BASE_URL}${path}`, {
-          ...init,
-          headers: {
-            'Content-Type': 'application/json',
-            ...(accessToken.current ? { Authorization: `Bearer ${accessToken.current}` } : {}),
-            ...(init.headers ?? {}),
-          },
-          cache: 'no-store',
-        });
-
-      let res = await call();
-      if (res.status === 401 && (await doRefresh())) res = await call();
-
-      const body = (await res.json().catch(() => null)) as
-        | { success: true; data: T; meta?: ApiMeta }
-        | { success: false; error: { code: string; message: string } }
-        | null;
-
-      if (!body || body.success === false) {
-        const e = body as { error?: { code: string; message: string } } | null;
-        throw new ApiError(e?.error?.code ?? 'UNKNOWN', e?.error?.message ?? 'Request failed', res.status);
-      }
-      return { data: body.data, meta: body.meta ?? {} };
-    },
-    [doRefresh],
-  );
-
-  const refreshUser = useCallback(async () => {
-    if (!accessToken.current) {
-      setUser(null);
-      return;
-    }
+  /** Fetch /auth/me using the current access token. */
+  const fetchMe = useCallback(async (token: string): Promise<AuthUser | null> => {
     try {
-      const { data } = await request<AuthUser>('/auth/me');
-      setUser(data);
+      const API =
+        process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+      const res = await fetch(`${API}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const body = await res.json();
+      return body.data ?? null;
     } catch {
-      setUser(null);
+      return null;
     }
-  }, [request]);
+  }, []);
 
-  const authAction = useCallback(
-    async (endpoint: string, payload: Record<string, unknown>) => {
-      const res = await fetch(endpoint, {
+  // -- public methods --
+
+  const login = useCallback(
+    async (email: string, password: string) => {
+      const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ email, password }),
       });
-      const body = (await res.json()) as
-        | { success: true; data: { accessToken: string } }
-        | { success: false; error: { code: string; message: string } };
-      if (!res.ok || body.success === false) {
-        const msg = body.success === false ? body.error.message : 'Request failed';
-        throw new ApiError(body.success === false ? body.error.code : 'UNKNOWN', msg, res.status);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new ApiError(
+          res.status,
+          body?.error?.code ?? 'LOGIN_FAILED',
+          body?.error?.message ?? 'Login failed',
+        );
       }
-      accessToken.current = body.data.accessToken;
-      await refreshUser();
+      const body = await res.json();
+      tokenRef.current = body.accessToken;
+      const user = await fetchMe(body.accessToken);
+      setState({ user, loading: false });
     },
-    [refreshUser],
+    [fetchMe],
   );
 
-  const login = useCallback((email: string, password: string) => authAction('/api/auth/login', { email, password }), [authAction]);
   const register = useCallback(
-    (email: string, password: string, displayName?: string) =>
-      authAction('/api/auth/register', { email, password, displayName }),
-    [authAction],
+    async (email: string, password: string, displayName?: string) => {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, displayName }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new ApiError(
+          res.status,
+          body?.error?.code ?? 'REGISTER_FAILED',
+          body?.error?.message ?? 'Registration failed',
+        );
+      }
+      const body = await res.json();
+      tokenRef.current = body.accessToken;
+      const user = await fetchMe(body.accessToken);
+      setState({ user, loading: false });
+    },
+    [fetchMe],
   );
+
   const logout = useCallback(async () => {
-    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
-    accessToken.current = null;
-    setUser(null);
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    tokenRef.current = null;
+    setState({ user: null, loading: false });
   }, []);
 
-  useEffect(() => {
-    (async () => {
-      const ok = await doRefresh();
-      if (ok) await refreshUser();
-      setLoading(false);
-    })();
-  }, [doRefresh, refreshUser]);
+  const refreshUser = useCallback(async () => {
+    const token = tokenRef.current ?? (await silentRefresh());
+    if (!token) {
+      setState({ user: null, loading: false });
+      return;
+    }
+    const user = await fetchMe(token);
+    setState({ user, loading: false });
+  }, [fetchMe, silentRefresh]);
 
-  const value = useMemo<AuthState>(
-    () => ({ user, loading, login, register, logout, refreshUser, request }),
-    [user, loading, login, register, logout, refreshUser, request],
+  /** Authenticated fetch with 401-retry. */
+  const request = useCallback(
+    async <T,>(path: string, init?: RequestInit): Promise<T> => {
+      const API =
+        process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+      const url = path.startsWith('http') ? path : `${API}${path}`;
+
+      const doFetch = async (token: string | null) => {
+        const headers = new Headers(init?.headers);
+        if (token) headers.set('Authorization', `Bearer ${token}`);
+        if (
+          init?.body &&
+          typeof init.body === 'string' &&
+          !headers.has('Content-Type')
+        ) {
+          headers.set('Content-Type', 'application/json');
+        }
+        return fetch(url, { ...init, headers });
+      };
+
+      let res = await doFetch(tokenRef.current);
+
+      // On 401, try a silent refresh and retry once.
+      if (res.status === 401) {
+        const newToken = await silentRefresh();
+        if (newToken) {
+          res = await doFetch(newToken);
+        }
+      }
+
+      if (!res.ok) {
+        let code = 'UNKNOWN';
+        let message = res.statusText;
+        try {
+          const body = await res.json();
+          if (body?.error) {
+            code = body.error.code;
+            message = body.error.message;
+          }
+        } catch {
+          /* ignore */
+        }
+        throw new ApiError(res.status, code, message);
+      }
+
+      const body = await res.json();
+      return body.data as T;
+    },
+    [silentRefresh],
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  // -- mount: attempt a silent refresh --
+
+  useEffect(() => {
+    silentRefresh().then(async (token) => {
+      if (token) {
+        const user = await fetchMe(token);
+        setState({ user, loading: false });
+      } else {
+        setState({ user: null, loading: false });
+      }
+    });
+  }, [silentRefresh, fetchMe]);
+
+  return (
+    <AuthContext.Provider
+      value={{
+        ...state,
+        login,
+        register,
+        logout,
+        refreshUser,
+        request,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
-export function useAuth(): AuthState {
+// ---- Hook ----
+
+export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  if (!ctx) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
   return ctx;
 }

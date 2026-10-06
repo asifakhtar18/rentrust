@@ -1,65 +1,114 @@
+/* ------------------------------------------------------------------ */
+/*  Thin API client. Unwraps the backend's { success, data, meta }     */
+/*  envelope and throws on errors.                                     */
+/* ------------------------------------------------------------------ */
+
 import type { ApiMeta } from './types';
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+
+// ---- Error class ----
 
 export class ApiError extends Error {
   constructor(
+    public readonly status: number,
     public readonly code: string,
     message: string,
-    public readonly status: number,
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
+// ---- Core fetch wrapper ----
+
+interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+  meta?: ApiMeta;
+}
+
+interface ApiErrorEnvelope {
+  success: false;
+  error: { code: string; message: string; details?: Record<string, unknown> };
+  meta?: ApiMeta;
+}
+
 export interface ApiResult<T> {
   data: T;
-  meta: ApiMeta;
-}
-
-interface EnvelopeSuccess<T> {
-  success: true;
-  data: T;
-  meta?: ApiMeta;
-}
-interface EnvelopeError {
-  success: false;
-  error: { code: string; message: string };
   meta?: ApiMeta;
 }
 
+/**
+ * Generic fetch wrapper that calls the backend API and unwraps the
+ * standard `{ success, data, meta }` envelope.
+ *
+ * Pass an `accessToken` to attach a Bearer header.
+ */
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit & { accessToken?: string } = {},
+  init?: RequestInit & { accessToken?: string },
 ): Promise<ApiResult<T>> {
-  const { accessToken, headers, ...rest } = options;
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    ...rest,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(headers ?? {}),
-    },
-    cache: rest.cache ?? 'no-store',
-  });
+  const { accessToken, ...fetchInit } = init ?? {};
 
-  let body: EnvelopeSuccess<T> | EnvelopeError | null = null;
-  try {
-    body = (await res.json()) as EnvelopeSuccess<T> | EnvelopeError;
-  } catch {
-    throw new ApiError('NETWORK_ERROR', 'Unexpected response from server', res.status);
+  const headers = new Headers(fetchInit.headers);
+  if (accessToken) {
+    headers.set('Authorization', `Bearer ${accessToken}`);
+  }
+  if (
+    fetchInit.body &&
+    typeof fetchInit.body === 'string' &&
+    !headers.has('Content-Type')
+  ) {
+    headers.set('Content-Type', 'application/json');
   }
 
-  if (!body || body.success === false) {
-    const err = body as EnvelopeError | null;
-    throw new ApiError(err?.error.code ?? 'UNKNOWN', err?.error.message ?? 'Request failed', res.status);
+  const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+
+  const res = await fetch(url, { ...fetchInit, headers });
+
+  if (!res.ok) {
+    let code = 'UNKNOWN';
+    let message = res.statusText;
+    let details: Record<string, unknown> | undefined;
+
+    try {
+      const body = (await res.json()) as ApiErrorEnvelope;
+      if (body?.error) {
+        code = body.error.code;
+        message = body.error.message;
+        details = body.error.details;
+      }
+    } catch {
+      /* body wasn't JSON — use defaults */
+    }
+
+    throw new ApiError(res.status, code, message, details);
   }
-  return { data: body.data, meta: body.meta ?? {} };
+
+  const body = (await res.json()) as ApiEnvelope<T>;
+  return { data: body.data, meta: body.meta };
 }
 
-export function qs(params: Record<string, string | number | boolean | undefined | null>): string {
-  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '');
-  if (entries.length === 0) return '';
-  return '?' + entries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
+// ---- Query-string helper ----
+
+/**
+ * Builds a query string from a params object, omitting undefined/null values.
+ *
+ * ```ts
+ * qs({ q: 'park', limit: 10, type: undefined })  // '?q=park&limit=10'
+ * ```
+ */
+export function qs(params: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== '') {
+      parts.push(
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
+      );
+    }
+  }
+  return parts.length ? `?${parts.join('&')}` : '';
 }
