@@ -7,6 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import helmet from '@fastify/helmet';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import { AppModule } from './app.module';
 import { AppConfig } from './config/configuration';
 import { ValidationException } from './common/errors/app.exception';
@@ -30,6 +31,9 @@ async function bootstrap(): Promise<void> {
   // the Next.js frontend owns its own CSP.
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cookie);
+  // Multipart for server-side image uploads (compressed before storage).
+  // Limit is generous; the image compressor downsizes afterwards.
+  await app.register(multipart, { limits: { fileSize: 15 * 1024 * 1024, files: 1 } });
 
   app.enableCors({
     origin: corsOrigins,

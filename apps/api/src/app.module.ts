@@ -23,6 +23,7 @@ import { TrustScoreModule } from './trust-score/trust-score.module';
 import { SearchModule } from './search/search.module';
 import { ModerationModule } from './moderation/moderation.module';
 import { ClaimsModule } from './claims/claims.module';
+import { AdminModule } from './admin/admin.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -92,6 +93,7 @@ import { AppConfig } from './config/configuration';
     SearchModule,
     ModerationModule,
     ClaimsModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

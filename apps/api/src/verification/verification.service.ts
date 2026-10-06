@@ -14,6 +14,7 @@ import {
   STORAGE_PROVIDER,
   StorageProvider,
 } from '../files/storage.interface';
+import { ImageCompressor } from '../files/image-compressor';
 import { AuditService } from '../audit/audit.service';
 import { CreateVerificationDto, RequestUploadUrlDto } from './dto/verification.dto';
 
@@ -30,8 +31,33 @@ export class VerificationService {
     private readonly prisma: PrismaService,
     private readonly properties: PropertiesService,
     private readonly audit: AuditService,
+    private readonly imageCompressor: ImageCompressor,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
+
+  /**
+   * Server-side image upload path: receives raw image bytes, compresses them
+   * (re-encode to WebP, downscale, strip EXIF), stores the result, and returns
+   * a document reference the client then attaches when creating a verification.
+   * Documents (PDFs) continue to use the presigned direct-to-storage path.
+   */
+  async uploadCompressedImage(
+    userId: string,
+    input: Buffer,
+    mimeType: string,
+  ): Promise<{ storageKey: string; contentType: string; sizeBytes: number }> {
+    const compressed = await this.imageCompressor.compress(input, mimeType);
+    const { key } = await this.storage.putObject({
+      keyPrefix: `verification/${userId}`,
+      body: compressed.body,
+      contentType: compressed.contentType,
+    });
+    return {
+      storageKey: key,
+      contentType: compressed.contentType,
+      sizeBytes: compressed.compressedBytes,
+    };
+  }
 
   /**
    * Issues a presigned upload URL scoped to the requesting user. The returned

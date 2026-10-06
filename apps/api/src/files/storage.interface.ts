@@ -20,12 +20,24 @@ export interface StorageProvider {
   /**
    * Issues a presigned upload for a private object. `keyPrefix` namespaces the
    * object (e.g. `verification/<userId>`). Returns the key to persist.
+   * Used for documents (PDFs) where the client uploads directly to storage.
    */
   createPresignedUpload(input: {
     keyPrefix: string;
     contentType: string;
     maxSizeBytes: number;
   }): Promise<PresignedUpload>;
+
+  /**
+   * Uploads bytes directly from the API server. Used for images, which are
+   * compressed server-side before storage (so they cannot use the presigned
+   * direct-to-storage path). Returns the stored key.
+   */
+  putObject(input: {
+    keyPrefix: string;
+    body: Buffer;
+    contentType: string;
+  }): Promise<{ key: string }>;
 
   /** Issues a short-lived download URL for an authorised reader (admins/mods). */
   createPresignedDownload(key: string): Promise<{ downloadUrl: string; expiresAt: Date }>;

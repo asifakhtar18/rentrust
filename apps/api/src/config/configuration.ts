@@ -25,6 +25,7 @@ export interface AppConfig {
     refreshTtl: string;
   };
   storage: {
+    // 's3' covers any S3-compatible store (AWS S3, Cloudflare R2, MinIO).
     driver: 'mock' | 's3';
     endpoint?: string;
     region: string;
@@ -33,6 +34,12 @@ export interface AppConfig {
     secretAccessKey?: string;
     forcePathStyle: boolean;
     signedUrlTtlSeconds: number;
+  };
+  imageCompression: {
+    enabled: boolean;
+    maxWidth: number;
+    maxHeight: number;
+    quality: number;
   };
   email: {
     driver: 'console' | 'smtp';
@@ -103,13 +110,22 @@ export default (): AppConfig => {
     },
     storage: {
       driver: (process.env.STORAGE_DRIVER as AppConfig['storage']['driver']) ?? 'mock',
+      // Cloudflare R2 example: https://<accountid>.r2.cloudflarestorage.com
       endpoint: process.env.STORAGE_ENDPOINT,
-      region: process.env.STORAGE_REGION ?? 'ap-south-1',
-      bucket: process.env.STORAGE_BUCKET ?? 'rentrust-verification',
+      // R2 ignores region but the SDK requires one; 'auto' is the R2 convention.
+      region: process.env.STORAGE_REGION ?? 'auto',
+      bucket: process.env.STORAGE_BUCKET ?? 'rentrust-documents',
       accessKeyId: process.env.STORAGE_ACCESS_KEY_ID,
       secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY,
+      // R2 and MinIO use path-style addressing.
       forcePathStyle: (process.env.STORAGE_FORCE_PATH_STYLE ?? 'true') === 'true',
       signedUrlTtlSeconds: parseInt(process.env.STORAGE_SIGNED_URL_TTL ?? '900', 10),
+    },
+    imageCompression: {
+      enabled: (process.env.IMAGE_COMPRESSION_ENABLED ?? 'true') === 'true',
+      maxWidth: parseInt(process.env.IMAGE_MAX_WIDTH ?? '2000', 10),
+      maxHeight: parseInt(process.env.IMAGE_MAX_HEIGHT ?? '2000', 10),
+      quality: parseInt(process.env.IMAGE_QUALITY ?? '80', 10),
     },
     email: {
       driver: (process.env.EMAIL_DRIVER as AppConfig['email']['driver']) ?? 'console',

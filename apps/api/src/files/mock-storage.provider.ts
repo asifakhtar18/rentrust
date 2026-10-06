@@ -29,6 +29,16 @@ export class MockStorageProvider implements StorageProvider {
     };
   }
 
+  async putObject(input: {
+    keyPrefix: string;
+    body: Buffer;
+    contentType: string;
+  }): Promise<{ key: string }> {
+    const key = `${input.keyPrefix}/${randomUUID()}`;
+    this.logger.debug(`Mock stored ${input.body.length} bytes at ${key}`);
+    return { key };
+  }
+
   async createPresignedDownload(key: string): Promise<{ downloadUrl: string; expiresAt: Date }> {
     return {
       downloadUrl: `http://mock-storage.local/download/${encodeURIComponent(key)}`,

@@ -59,6 +59,23 @@ export class S3StorageProvider implements StorageProvider {
     };
   }
 
+  async putObject(input: {
+    keyPrefix: string;
+    body: Buffer;
+    contentType: string;
+  }): Promise<{ key: string }> {
+    const key = `${input.keyPrefix}/${randomUUID()}`;
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: input.body,
+        ContentType: input.contentType,
+      }),
+    );
+    return { key };
+  }
+
   async createPresignedDownload(key: string): Promise<{ downloadUrl: string; expiresAt: Date }> {
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
     const downloadUrl = await getSignedUrl(this.client, command, { expiresIn: this.ttlSeconds });

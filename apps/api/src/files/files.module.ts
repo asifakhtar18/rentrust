@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../config/configuration';
 import { MockStorageProvider } from './mock-storage.provider';
 import { S3StorageProvider } from './s3-storage.provider';
+import { ImageCompressor } from './image-compressor';
 import { STORAGE_PROVIDER } from './storage.interface';
 
 /**
@@ -15,6 +16,7 @@ import { STORAGE_PROVIDER } from './storage.interface';
   providers: [
     MockStorageProvider,
     S3StorageProvider,
+    ImageCompressor,
     {
       provide: STORAGE_PROVIDER,
       inject: [ConfigService, MockStorageProvider, S3StorageProvider],
@@ -28,6 +30,6 @@ import { STORAGE_PROVIDER } from './storage.interface';
       },
     },
   ],
-  exports: [STORAGE_PROVIDER],
+  exports: [STORAGE_PROVIDER, ImageCompressor],
 })
 export class FilesModule {}

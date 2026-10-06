@@ -14,7 +14,7 @@ export interface Injected {
 
 export function http(app: NestFastifyApplication) {
   return (
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
     url: string,
     payload?: unknown,
     token?: string,
