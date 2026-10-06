@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Apple-inspired token layer. Light-first with a true dark theme. Values are
+ * RGB channel triplets so Tailwind's <alpha-value> works. Secondary text is
+ * tinted toward the ink hue, never flat gray.
+ */
+:root {
+  --canvas: 245 245 247; /* system gray 6 — the calm page */
+  --surface: 255 255 255;
+  --surface-raised: 255 255 255;
+  --hairline: 0 0 0; /* used at low alpha */
+  --ink: 17 17 19;
+  --ink-secondary: 60 60 67; /* label secondary */
+  --ink-tertiary: 120 120 128;
+  --accent: 0 113 227; /* iOS system blue */
+  --accent-ink: 255 255 255;
+  --positive: 22 135 74;
+  --caution: 176 104 4;
+  --critical: 199 42 42;
+  --shadow: 15 23 42;
+}
+
+[data-theme='dark'] {
+  --canvas: 0 0 0;
+  --surface: 22 22 24;
+  --surface-raised: 32 32 36;
+  --hairline: 255 255 255;
+  --ink: 245 245 247;
+  --ink-secondary: 199 199 204;
+  --ink-tertiary: 142 142 147;
+  --accent: 10 132 255; /* brighter blue for dark */
+  --accent-ink: 255 255 255;
+  --positive: 48 209 88;
+  --caution: 255 179 64;
+  --critical: 255 105 97;
+  --shadow: 0 0 0;
+}
+
+@layer base {
+  * {
+    border-color: rgb(var(--hairline) / 0.1);
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: rgb(var(--canvas));
+    color: rgb(var(--ink));
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* Themed browser surfaces — the cheap tells, done right. */
+  ::selection {
+    background: rgb(var(--accent) / 0.22);
+    color: rgb(var(--ink));
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgb(var(--accent) / 0.3);
+    border-radius: 0.5rem;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--ink-tertiary) / 0.4) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgb(var(--ink-tertiary) / 0.35);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--ink-tertiary) / 0.55);
+    background-clip: content-box;
+  }
+  /* Tabular numerals for scores and data. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  /* Translucent material (navbars, overlays) — a specific effect, not decor. */
+  .material {
+    background: rgb(var(--surface) / 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+}
