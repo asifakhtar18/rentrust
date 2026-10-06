@@ -7,9 +7,9 @@
 > with a Next.js frontend. Built in phases; each phase ends green on
 > typecheck + lint + build + unit + e2e before moving on.
 
-**Progress: 12 / 15 phases complete.**
+**Progress: 13 / 15 phases complete.**
 
-Current test tally: **32 unit tests + 65 e2e tests**, all passing.
+Current test tally: **36 unit tests + 65 e2e tests (101 total)**, all passing.
 
 Storage: Cloudflare R2 (S3-compatible) in production via the S3 driver; images
 are compressed and EXIF-stripped server-side (`sharp`, re-encoded to WebP)
@@ -121,16 +121,18 @@ S3-compatible object storage.
 - Observability: structured logs with request IDs and health/readiness probes
   already in place.
 
+### [x] Phase 13 — Testing
+- 10 e2e suites (65 tests) + unit tests (36) covering auth, authz, search,
+  properties, reviews, verification, moderation, anonymity, owner response,
+  claims, trust score, geo, pagination.
+- Added isolated unit tests for the trust-score engine math (weighting,
+  confidence curve, no-data path).
+
 ---
 
 ## Not completed
 
-### [ ] Phase 13 — Testing  *(next)*
-- Consolidate and fill coverage gaps across auth, authz, search, properties,
-  reviews, verification, moderation, anonymity, owner response, claims, trust
-  score, geo, pagination. (Already at 53 e2e + 27 unit.)
-
-### [ ] Phase 14 — Deployment & docs
+### [ ] Phase 14 — Deployment & docs  *(next)*
 - Multi-stage `Dockerfile` for API + separate worker process.
 - `docker-compose` for local Postgres/PostGIS + Redis + MinIO (present; finalize).
 - Seed data: 20 properties, 10 landlords, 5 managers, 100 fictional reviews,

@@ -56,6 +56,52 @@ services:
       timeout: 5s
       retries: 5
 
+  # API and worker are opt-in via the "app" profile so local dev can run them
+  # on the host while only infra runs in Docker:
+  #   docker compose up -d                 # infra only
+  #   docker compose --profile app up -d   # infra + API + worker
+  api:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: rentrust-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: '4000'
+      DATABASE_URL: postgresql://rentrust:rentrust@postgres:5432/rentrust?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-mock}
+    ports:
+      - '4000:4000'
+
+  worker:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: rentrust-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://rentrust:rentrust@postgres:5432/rentrust?schema=public
+      REDIS_URL: redis://redis:6379
+    command: ['node', 'dist/worker.js']
+
 volumes:
   rentrust-postgres-data:
   rentrust-redis-data:

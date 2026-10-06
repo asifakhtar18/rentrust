@@ -15,6 +15,7 @@
     "test": "npm run test --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
     "db:migrate": "npm --workspace @rentrust/api run db:migrate",
+    "db:migrate:deploy": "npm --workspace @rentrust/api run db:migrate:deploy",
     "db:seed": "npm --workspace @rentrust/api run db:seed",
     "db:generate": "npm --workspace @rentrust/api run db:generate",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""

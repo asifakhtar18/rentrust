@@ -40,7 +40,9 @@ async function bootstrap(): Promise<void> {
     credentials: true,
   });
 
-  app.setGlobalPrefix(apiPrefix);
+  // Health/readiness probes live at the root (/health, /ready) so container
+  // orchestrators can probe them without the versioned API prefix.
+  app.setGlobalPrefix(apiPrefix, { exclude: ['health', 'ready'] });
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
   // Validate and transform every DTO. Unknown properties are rejected to keep
