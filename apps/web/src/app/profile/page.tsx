@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, ShieldCheck, Mail, FileText, LogOut, Lock } from 'lucide-react';
+import { Loader2, ShieldCheck, Mail, FileText, LogOut, Lock, KeyRound } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import type { MyReview, ReviewStatus } from '@/lib/types';
+import type { MyReview, ReviewStatus, MyClaim, ClaimStatus } from '@/lib/types';
 import { TENURE_LABELS } from '@/lib/labels';
 import { Section, Card, EmptyState, Badge } from '@/components/ui/primitives';
 import { LinkButton, Button } from '@/components/ui/button';
@@ -22,10 +22,17 @@ const STATUS_META: Record<ReviewStatus, { label: string; tone: 'neutral' | 'bran
   REMOVED: { label: 'Removed', tone: 'danger' },
 };
 
+const CLAIM_STATUS_META: Record<ClaimStatus, { label: string; tone: 'neutral' | 'success' | 'warning' | 'danger' }> = {
+  PENDING: { label: 'In review', tone: 'warning' },
+  APPROVED: { label: 'Approved', tone: 'success' },
+  REJECTED: { label: 'Rejected', tone: 'danger' },
+};
+
 export default function ProfilePage() {
   const { user, loading: authLoading, request, logout } = useAuth();
   const router = useRouter();
   const [reviews, setReviews] = useState<MyReview[]>([]);
+  const [claims, setClaims] = useState<MyClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,8 +46,12 @@ export default function ProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await request<MyReview[]>('/me/reviews');
-      setReviews(data);
+      const [reviewData, claimData] = await Promise.all([
+        request<MyReview[]>('/me/reviews'),
+        request<MyClaim[]>('/claims/mine').catch(() => [] as MyClaim[]),
+      ]);
+      setReviews(reviewData);
+      setClaims(claimData);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load your reviews.');
     } finally {
@@ -164,9 +175,49 @@ export default function ProfilePage() {
               </Card>
             )}
           </div>
+
+          {/* ---- My claims (only shown once there's at least one) ---- */}
+          {!loading && claims.length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center justify-between">
+                <h2 className="t-section-title text-foreground">Your property claims</h2>
+                <span className="t-meta">{claims.length} total</span>
+              </div>
+              <Card elevated className="mt-4 divide-y divide-border overflow-hidden">
+                {claims.map((c) => (
+                  <MyClaimRow key={c.id} claim={c} />
+                ))}
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </Section>
+  );
+}
+
+function MyClaimRow({ claim }: { claim: MyClaim }) {
+  const status = CLAIM_STATUS_META[claim.status];
+  const date = new Date(claim.createdAt).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  return (
+    <div className="flex items-center gap-4 px-4 py-4">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <KeyRound className="size-5" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <Link href={`/properties/${claim.propertyId}`} className="t-label text-foreground hover:text-primary">
+          View property
+        </Link>
+        <p className="mt-0.5 t-meta">
+          {claim.role === 'OWNER' ? 'Owner' : 'Manager'} claim · {date}
+        </p>
+      </div>
+      <Badge tone={status.tone}>{status.label}</Badge>
+    </div>
   );
 }
 

@@ -271,6 +271,35 @@ export interface Paginated<T> {
   pageSize: number;
 }
 
+// ---- Claims (owner-facing) ----
+
+export type ClaimRole = 'OWNER' | 'MANAGER';
+export type ClaimStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+/** Presigned upload descriptor returned by POST /claims/upload-url. */
+export interface PresignedUpload {
+  key: string;
+  uploadUrl: string;
+  expiresAt: string;
+  requiredHeaders: Record<string, string>;
+}
+
+/** A document reference attached when creating a claim. */
+export interface ClaimDocumentRef {
+  storageKey: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+/** A row from GET /claims/mine. */
+export interface MyClaim {
+  id: string;
+  propertyId: string;
+  role: ClaimRole;
+  status: ClaimStatus;
+  createdAt: string;
+}
+
 // ---- Notifications ----
 
 export interface Notification {

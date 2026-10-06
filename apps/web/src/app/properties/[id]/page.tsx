@@ -9,6 +9,7 @@ import { LinkButton } from '@/components/ui/button';
 import { TrustScore, CategoryRow } from '@/components/trust-score/trust-score';
 import { ReviewCard } from '@/components/review/review-card';
 import { SaveButton } from '@/components/property/save-button';
+import { ClaimButton } from '@/components/property/claim-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,8 +47,9 @@ export default async function PropertyPage({ params }: { params: { id: string } 
             {detail.yearBuilt && <span className="text-muted-foreground/60">· Built {detail.yearBuilt}</span>}
           </p>
         </div>
-        <div className="flex gap-2.5">
+        <div className="flex flex-wrap gap-2.5">
           <SaveButton propertyId={detail.id} />
+          <ClaimButton propertyId={detail.id} isClaimed={detail.isClaimed} />
           <LinkButton href={`/reviews/new?propertyId=${detail.id}`}>Write a review</LinkButton>
         </div>
       </div>
