@@ -3,45 +3,63 @@
 @tailwind utilities;
 
 /*
- * Apple-inspired token layer. Light-first with a true dark theme. Values are
- * RGB channel triplets so Tailwind's <alpha-value> works. Secondary text is
- * tinted toward the ink hue, never flat gray.
+ * RentTrust design tokens — DARK-FIRST.
+ * Warm earthy palette: deep charcoal canvas, honey-gold accent, sand/wheat
+ * positives, terracotta warnings. Inspired by Golden Glow + Neutral Earth
+ * Tones. No blue, no green. Feels like warm light on dark stone.
  */
 :root {
-  --canvas: 245 245 247; /* system gray 6 — the calm page */
-  --surface: 255 255 255;
-  --surface-raised: 255 255 255;
-  --hairline: 0 0 0; /* used at low alpha */
-  --ink: 17 17 19;
-  --ink-secondary: 60 60 67; /* label secondary */
-  --ink-tertiary: 120 120 128;
-  --accent: 0 113 227; /* iOS system blue */
-  --accent-ink: 255 255 255;
-  --positive: 22 135 74;
-  --caution: 176 104 4;
-  --critical: 199 42 42;
-  --shadow: 15 23 42;
+  /* Surfaces */
+  --canvas: 20 19 17;         /* deep warm charcoal */
+  --surface: 32 30 27;        /* raised panel, like dark wood */
+  --surface-raised: 44 41 37; /* popover / dropdown */
+  --hairline: 235 228 218;    /* warm cream, used at low alpha */
+
+  /* Text */
+  --ink: 235 228 218;         /* warm cream white */
+  --ink-secondary: 178 170 158;
+  --ink-tertiary: 128 121 110;
+
+  /* Accent — warm honey gold */
+  --accent: 232 176 75;       /* #E8B04B */
+  --accent-ink: 20 19 17;     /* dark text on gold for contrast */
+
+  /* Semantic */
+  --positive: 196 180 140;    /* warm sand — quiet positive */
+  --caution: 210 155 60;      /* deeper amber */
+  --critical: 198 108 88;     /* muted terracotta, not alarming */
+
+  /* Shadows and scores */
+  --shadow: 0 0 0;
+  --score-excellent: 232 176 75;  /* gold */
+  --score-good: 210 180 120;     /* wheat */
+  --score-mixed: 178 150 110;    /* tan */
+  --score-poor: 198 108 88;      /* terracotta */
 }
 
-[data-theme='dark'] {
-  --canvas: 0 0 0;
-  --surface: 22 22 24;
-  --surface-raised: 32 32 36;
-  --hairline: 255 255 255;
-  --ink: 245 245 247;
-  --ink-secondary: 199 199 204;
-  --ink-tertiary: 142 142 147;
-  --accent: 10 132 255; /* brighter blue for dark */
-  --accent-ink: 255 255 255;
-  --positive: 48 209 88;
-  --caution: 255 179 64;
-  --critical: 255 105 97;
-  --shadow: 0 0 0;
+[data-theme='light'] {
+  --canvas: 245 240 232;      /* warm parchment */
+  --surface: 255 252 247;
+  --surface-raised: 255 252 247;
+  --hairline: 40 36 30;
+  --ink: 40 36 30;
+  --ink-secondary: 95 88 76;
+  --ink-tertiary: 148 140 128;
+  --accent: 180 130 30;       /* deeper gold for contrast on light */
+  --accent-ink: 255 252 247;
+  --positive: 110 130 80;
+  --caution: 170 115 25;
+  --critical: 185 75 55;
+  --shadow: 40 36 30;
+  --score-excellent: 180 130 30;
+  --score-good: 160 125 50;
+  --score-mixed: 148 120 75;
+  --score-poor: 185 75 55;
 }
 
 @layer base {
   * {
-    border-color: rgb(var(--hairline) / 0.1);
+    border-color: rgb(var(--hairline) / 0.08);
   }
   html {
     -webkit-font-smoothing: antialiased;
@@ -51,38 +69,31 @@
   body {
     background-color: rgb(var(--canvas));
     color: rgb(var(--ink));
-    font-feature-settings: 'cv11', 'ss01';
   }
 
-  /* Themed browser surfaces — the cheap tells, done right. */
   ::selection {
-    background: rgb(var(--accent) / 0.22);
+    background: rgb(var(--accent) / 0.25);
     color: rgb(var(--ink));
   }
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 4px rgb(var(--accent) / 0.3);
+    box-shadow: 0 0 0 3px rgb(var(--accent) / 0.4);
     border-radius: 0.5rem;
   }
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(var(--ink-tertiary) / 0.4) transparent;
+    scrollbar-color: rgb(var(--ink-tertiary) / 0.3) transparent;
   }
   *::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
   *::-webkit-scrollbar-thumb {
-    background: rgb(var(--ink-tertiary) / 0.35);
+    background: rgb(var(--ink-tertiary) / 0.25);
     border-radius: 9999px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
-  *::-webkit-scrollbar-thumb:hover {
-    background: rgb(var(--ink-tertiary) / 0.55);
-    background-clip: content-box;
-  }
-  /* Tabular numerals for scores and data. */
   .tabular {
     font-variant-numeric: tabular-nums;
   }
@@ -100,10 +111,9 @@
 }
 
 @layer components {
-  /* Translucent material (navbars, overlays) — a specific effect, not decor. */
   .material {
-    background: rgb(var(--surface) / 0.72);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    background: rgb(var(--surface) / 0.75);
+    backdrop-filter: saturate(120%) blur(16px);
+    -webkit-backdrop-filter: saturate(120%) blur(16px);
   }
 }

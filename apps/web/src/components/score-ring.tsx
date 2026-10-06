@@ -8,10 +8,10 @@ import { cn } from '@/lib/cn';
  */
 
 export function scoreBand(score: number): { tone: string; label: string } {
-  if (score >= 80) return { tone: 'var(--positive)', label: 'Excellent' };
-  if (score >= 65) return { tone: 'var(--accent)', label: 'Good' };
-  if (score >= 45) return { tone: 'var(--caution)', label: 'Mixed' };
-  return { tone: 'var(--critical)', label: 'Poor' };
+  if (score >= 80) return { tone: 'var(--score-excellent)', label: 'Excellent' };
+  if (score >= 65) return { tone: 'var(--score-good)', label: 'Good' };
+  if (score >= 45) return { tone: 'var(--score-mixed)', label: 'Mixed' };
+  return { tone: 'var(--score-poor)', label: 'Poor' };
 }
 
 export function ScoreRing({
