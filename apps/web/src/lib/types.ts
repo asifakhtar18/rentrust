@@ -200,6 +200,77 @@ export interface LocalityIntelligence {
   commonComplaints?: string[];
 }
 
+// ---- Admin ----
+
+export interface AdminDashboard {
+  users: number;
+  verifiedResidents: number;
+  reviews: number;
+  verifiedReviews: number;
+  properties: number;
+  claimedProperties: number;
+  pendingModeration: number;
+  pendingVerification: number;
+  openReports: number;
+  activeCities: number;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  roles: UserRole[];
+  status: string;
+  emailVerifiedAt: string | null;
+  createdAt: string;
+}
+
+export type ModerationDecision = 'PUBLISH' | 'REJECT' | 'HIDE' | 'UNHIDE' | 'REMOVE' | 'RESTORE';
+
+export interface ModerationQueueItem {
+  id: string;
+  propertyId: string;
+  status: ReviewStatus;
+  createdAt: string;
+  openReports: number;
+  reportReasons: string[];
+  contentFlags: string[];
+}
+
+export interface DocumentMeta {
+  id: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+export interface VerificationQueueItem {
+  id: string;
+  userId: string;
+  propertyId: string;
+  reviewId: string | null;
+  status: string;
+  evidenceType: string;
+  createdAt: string;
+  documents: DocumentMeta[];
+}
+
+export interface ClaimQueueItem {
+  id: string;
+  propertyId: string;
+  claimantId: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  documents: DocumentMeta[];
+}
+
+export interface Paginated<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 // ---- Notifications ----
 
 export interface Notification {
