@@ -12,7 +12,7 @@ import { Footer } from '@/components/navigation/footer';
  */
 
 export const metadata: Metadata = {
-  title: { default: 'RentTrust — Know the place before you rent', template: '%s · RentTrust' },
+  title: { default: 'RenTrust — Know the place before you rent', template: '%s · RenTrust' },
   description:
     'Real resident experiences, property intelligence and transparent trust scores — so you know what you are signing up for before you move in.',
 };

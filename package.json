@@ -2,7 +2,7 @@
   "name": "rentrust",
   "version": "0.1.0",
   "private": true,
-  "description": "RentTrust — know the place before you rent it. Indian rental-property intelligence and resident-review platform.",
+  "description": "RenTrust — know the place before you rent it. Indian rental-property intelligence and resident-review platform.",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -16,6 +16,8 @@
     "build": "npm run build --workspaces --if-present",
     "db:migrate": "npm --workspace @rentrust/api run db:migrate",
     "db:migrate:deploy": "npm --workspace @rentrust/api run db:migrate:deploy",
+    "db:migrate:status:local": "node --env-file=.env.local scripts/prisma-local.mjs status",
+    "db:migrate:deploy:local": "node --env-file=.env.local scripts/prisma-local.mjs deploy",
     "db:seed": "npm --workspace @rentrust/api run db:seed",
     "db:generate": "npm --workspace @rentrust/api run db:generate",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""

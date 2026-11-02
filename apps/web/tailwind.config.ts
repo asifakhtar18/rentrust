@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
 /*
- * RentTrust — Folyo-grade token mapping. All colors resolve from HSL CSS
+ * RenTrust — Folyo-grade token mapping. All colors resolve from HSL CSS
  * variables (globals.css) so themes are authored, not inverted. One functional
  * accent (primary indigo). Inter for UI, Geist Mono for tabular data.
  */

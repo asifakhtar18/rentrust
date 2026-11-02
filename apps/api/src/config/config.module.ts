@@ -12,6 +12,10 @@ import configuration from './configuration';
     NestConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      // npm workspace scripts run from apps/api. Load local env files from the
+      // API first, then the monorepo root; production providers inject process
+      // env directly and do not need either file.
+      envFilePath: ['.env.local', '../../.env.local', '.env', '../../.env'],
       load: [configuration],
     }),
   ],

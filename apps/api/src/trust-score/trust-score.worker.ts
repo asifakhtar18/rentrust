@@ -25,11 +25,15 @@ export class TrustScoreWorker implements OnModuleInit, OnModuleDestroy {
     private readonly engine: TrustScoreEngine,
     private readonly config: ConfigService<AppConfig, true>,
     private readonly events: EventBus,
-    @Inject(QUEUE_CONNECTION) private readonly connection: IORedis,
+    @Inject(QUEUE_CONNECTION) private readonly connection: IORedis | null,
   ) {}
 
   onModuleInit(): void {
-    if (this.config.get('env', { infer: true }) === 'test') {
+    if (
+      this.config.get('env', { infer: true }) === 'test' ||
+      this.config.get('queue', { infer: true }).driver === 'inline' ||
+      !this.connection
+    ) {
       return;
     }
     this.worker = new Worker<RecalculateScoreJob>(

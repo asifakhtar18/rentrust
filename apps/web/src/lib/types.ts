@@ -27,6 +27,18 @@ export type TriState = 'YES' | 'NO' | 'MAYBE';
 
 export type NotificationChannel = 'IN_APP' | 'EMAIL';
 export type NotificationStatus = 'PENDING' | 'SENT' | 'READ' | 'FAILED';
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  channel: NotificationChannel;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown> | null;
+  status: NotificationStatus;
+  readAt: string | null;
+  createdAt: string;
+}
 export type SearchEntityType = 'property' | 'landlord' | 'locality';
 
 // ---- API envelope ----
@@ -108,8 +120,27 @@ export interface PropertyDetail extends Property {
   } | null;
   locality: Locality | null;
   score: TrustScore | null;
-  landlords: Array<{ id: string; name: string; role: string }>;
-  managers: Array<{ id: string; name: string; role: string }>;
+  landlords: Array<{
+    id: string;
+    displayName: string;
+    slug: string;
+    aliases: string[];
+    isCompany: boolean;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string | null;
+    role: string;
+  }>;
+  managers: Array<{
+    id: string;
+    displayName: string;
+    slug: string;
+    company: string | null;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt: string | null;
+    role: string;
+  }>;
   reviewCount: number;
 }
 
@@ -252,6 +283,47 @@ export interface VerificationQueueItem {
   evidenceType: string;
   createdAt: string;
   documents: DocumentMeta[];
+}
+
+export type VerificationEvidenceType =
+  | 'RENTAL_AGREEMENT'
+  | 'RENT_RECEIPT'
+  | 'UTILITY_DOCUMENT'
+  | 'MANAGEMENT_VERIFICATION'
+  | 'RESIDENT_INVITATION'
+  | 'OTHER';
+
+export interface MyVerification {
+  id: string;
+  propertyId: string;
+  reviewId: string | null;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  evidenceType: VerificationEvidenceType;
+  createdAt: string;
+}
+
+export interface VerificationDocumentRef {
+  storageKey: string;
+  contentType: string;
+  sizeBytes: number;
+}
+
+export interface LandlordProfile {
+  landlord: { id: string; displayName: string; isCompany: boolean };
+  propertyCount: number;
+  verifiedReviewCount: number;
+  hasEnoughData: boolean;
+  averageOverall: number | null;
+  minimumReviewsForScore: number;
+  properties: Array<{
+    id: string;
+    displayName: string;
+    slug: string;
+    localityName: string | null;
+    cityName: string | null;
+    verifiedReviewCount: number;
+    averageOverall: number | null;
+  }>;
 }
 
 export interface ClaimQueueItem {

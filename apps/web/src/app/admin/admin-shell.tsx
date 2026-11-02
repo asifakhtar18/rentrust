@@ -10,6 +10,7 @@ import {
   KeyRound,
   Users,
   Building2,
+  MapPin,
   Loader2,
   ArrowLeft,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ const NAV: NavItem[] = [
   { href: '/admin/claims', label: 'Claims', icon: <KeyRound className="size-4" />, roles: ['ADMIN'] },
   { href: '/admin/users', label: 'Users', icon: <Users className="size-4" />, roles: ['ADMIN'] },
   { href: '/admin/properties', label: 'Properties', icon: <Building2 className="size-4" />, roles: ['ADMIN'] },
+  { href: '/admin/locations', label: 'Locations', icon: <MapPin className="size-4" />, roles: ['ADMIN'] },
 ];
 
 function hasStaffAccess(roles: UserRole[] | undefined): boolean {
@@ -78,7 +80,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           admin.
         </p>
         <Link href="/" className="mt-6 inline-flex items-center gap-1.5 t-label text-primary hover:underline">
-          <ArrowLeft className="size-4" aria-hidden /> Back to RentTrust
+          <ArrowLeft className="size-4" aria-hidden /> Back to RenTrust
         </Link>
       </div>
     );

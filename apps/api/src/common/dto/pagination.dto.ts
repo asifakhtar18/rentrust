@@ -27,11 +27,12 @@ export class CursorPaginationQuery {
  * jumps matter and dataset size is bounded by moderation throughput.
  */
 export class OffsetPaginationQuery {
-  @ApiPropertyOptional({ default: 1, minimum: 1 })
+  @ApiPropertyOptional({ default: 1, minimum: 1, maximum: 1_000_000 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(1_000_000)
   page = 1;
 
   @ApiPropertyOptional({ default: 20, minimum: 1, maximum: 100 })

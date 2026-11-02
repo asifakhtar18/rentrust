@@ -14,8 +14,9 @@ import {
   STORAGE_PROVIDER,
   StorageProvider,
 } from '../files/storage.interface';
-import { ImageCompressor } from '../files/image-compressor';
 import { AuditService } from '../audit/audit.service';
+import { EventBus } from '../events/event-bus';
+import { DomainEvent } from '../events/events';
 import { CreateVerificationDto, RequestUploadUrlDto } from './dto/verification.dto';
 
 /**
@@ -31,33 +32,9 @@ export class VerificationService {
     private readonly prisma: PrismaService,
     private readonly properties: PropertiesService,
     private readonly audit: AuditService,
-    private readonly imageCompressor: ImageCompressor,
+    private readonly events: EventBus,
     @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
   ) {}
-
-  /**
-   * Server-side image upload path: receives raw image bytes, compresses them
-   * (re-encode to WebP, downscale, strip EXIF), stores the result, and returns
-   * a document reference the client then attaches when creating a verification.
-   * Documents (PDFs) continue to use the presigned direct-to-storage path.
-   */
-  async uploadCompressedImage(
-    userId: string,
-    input: Buffer,
-    mimeType: string,
-  ): Promise<{ storageKey: string; contentType: string; sizeBytes: number }> {
-    const compressed = await this.imageCompressor.compress(input, mimeType);
-    const { key } = await this.storage.putObject({
-      keyPrefix: `verification/${userId}`,
-      body: compressed.body,
-      contentType: compressed.contentType,
-    });
-    return {
-      storageKey: key,
-      contentType: compressed.contentType,
-      sizeBytes: compressed.compressedBytes,
-    };
-  }
 
   /**
    * Issues a presigned upload URL scoped to the requesting user. The returned
@@ -88,13 +65,24 @@ export class VerificationService {
       if (!doc.storageKey.startsWith(prefix)) {
         throw new ForbiddenAppException('Document key does not belong to you.');
       }
+      await this.storage.assertUploadedDocument(doc.storageKey, doc.contentType, doc.sizeBytes);
     }
 
     if (dto.reviewId) {
       const review = await this.prisma.review.findFirst({
         where: { id: dto.reviewId, authorId: userId, deletedAt: null },
+        select: { id: true, propertyId: true },
       });
       if (!review) {
+        throw new NotFoundAppException('Review not found', ErrorCode.REVIEW_NOT_FOUND);
+      }
+      let reviewPropertyId: string;
+      try {
+        reviewPropertyId = (await this.properties.getById(review.propertyId)).id;
+      } catch {
+        throw new NotFoundAppException('Review not found', ErrorCode.REVIEW_NOT_FOUND);
+      }
+      if (reviewPropertyId !== property.id) {
         throw new NotFoundAppException('Review not found', ErrorCode.REVIEW_NOT_FOUND);
       }
     }
@@ -210,6 +198,13 @@ export class VerificationService {
       entityId: id,
       metadata: { decision },
     });
+
+    if (decision === 'VERIFIED' && request.reviewId) {
+      await this.events.emit(DomainEvent.REVIEW_VERIFIED, {
+        reviewId: request.reviewId,
+        propertyId: request.propertyId,
+      });
+    }
 
     return updated;
   }

@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import {
   backendAuth,
   clearRefreshCookie,
+  noStore,
   readRefreshCookie,
   setRefreshCookie,
 } from '@/lib/bff';
@@ -17,10 +18,10 @@ export async function POST() {
   const refreshToken = await readRefreshCookie();
 
   if (!refreshToken) {
-    return NextResponse.json(
+    return noStore(NextResponse.json(
       { error: { code: 'NO_SESSION', message: 'No active session.' } },
       { status: 401 },
-    );
+    ));
   }
 
   const { ok, status, data } = await backendAuth<
@@ -28,14 +29,15 @@ export async function POST() {
   >('/auth/refresh', { refreshToken });
 
   if (!ok) {
-    // The refresh token is stale/invalid — clear the cookie.
-    const res = NextResponse.json(data, { status });
-    clearRefreshCookie(res);
+    const res = noStore(NextResponse.json(data, { status }));
+    // Keep the session cookie during an upstream outage so the client can retry.
+    // Clear it only when the backend has definitively rejected the session.
+    if (status === 401 || status === 403) clearRefreshCookie(res);
     return res;
   }
 
   const tokens = data.data;
-  const res = NextResponse.json({ accessToken: tokens.accessToken });
+  const res = noStore(NextResponse.json({ accessToken: tokens.accessToken }));
   setRefreshCookie(res, tokens.refreshToken);
   return res;
 }

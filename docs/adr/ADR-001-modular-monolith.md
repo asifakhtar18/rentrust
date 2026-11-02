@@ -1,7 +1,7 @@
 # ADR-001: Modular monolith
 
 - **Status:** Accepted
-- **Context:** RentTrust is an early-stage MVP with several cohesive domains
+- **Context:** RenTrust is an early-stage MVP with several cohesive domains
   (properties, reviews, verification, trust score, moderation, claims). We need
   clear boundaries without the operational cost of microservices.
 - **Decision:** Build a **modular monolith** in NestJS. Each domain is a module

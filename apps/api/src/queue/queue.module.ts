@@ -21,6 +21,7 @@ export const QUEUE_CONNECTION = Symbol('QUEUE_CONNECTION');
       provide: QUEUE_CONNECTION,
       inject: [ConfigService],
       useFactory: (config: ConfigService<AppConfig, true>) => {
+        if (config.get('queue', { infer: true }).driver === 'inline') return null;
         const url = config.get('redis', { infer: true }).url;
         return new IORedis(url, { maxRetriesPerRequest: null });
       },
@@ -28,11 +29,13 @@ export const QUEUE_CONNECTION = Symbol('QUEUE_CONNECTION');
     {
       provide: TRUST_SCORE_QUEUE,
       inject: [QUEUE_CONNECTION],
-      useFactory: (connection: IORedis) =>
-        new Queue(QUEUE_NAMES.TRUST_SCORE, {
-          connection,
-          defaultJobOptions: DEFAULT_JOB_OPTIONS,
-        }),
+      useFactory: (connection: IORedis | null) =>
+        connection
+          ? new Queue(QUEUE_NAMES.TRUST_SCORE, {
+              connection,
+              defaultJobOptions: DEFAULT_JOB_OPTIONS,
+            })
+          : null,
     },
   ],
   exports: [TRUST_SCORE_QUEUE, QUEUE_CONNECTION],

@@ -4,7 +4,7 @@ import { Section } from '@/components/ui/primitives';
 import { CompareClient } from './compare-client';
 
 export const metadata: Metadata = {
-  title: 'Compare properties · RentTrust',
+  title: 'Compare properties · RenTrust',
   description: 'Compare up to four properties side by side on trust score and resident-rated categories.',
 };
 

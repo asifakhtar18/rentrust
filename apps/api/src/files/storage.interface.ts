@@ -2,7 +2,7 @@
  * Object-storage abstraction. Verification and claim documents are sensitive,
  * so the application never proxies file bytes and never returns a public URL.
  * Instead it issues short-lived signed URLs for direct client<->storage
- * transfer. Callers depend on this interface, not S3/MinIO specifics, so the
+ * transfer. Callers depend on this interface, not R2 SDK specifics, so the
  * provider can change without touching domain code.
  */
 export interface PresignedUpload {
@@ -20,7 +20,8 @@ export interface StorageProvider {
   /**
    * Issues a presigned upload for a private object. `keyPrefix` namespaces the
    * object (e.g. `verification/<userId>`). Returns the key to persist.
-   * Used for documents (PDFs) where the client uploads directly to storage.
+   * The client uploads directly to storage. The size is verified after upload
+   * because R2 presigned PUT URLs cannot enforce a content-length range.
    */
   createPresignedUpload(input: {
     keyPrefix: string;
@@ -28,16 +29,8 @@ export interface StorageProvider {
     maxSizeBytes: number;
   }): Promise<PresignedUpload>;
 
-  /**
-   * Uploads bytes directly from the API server. Used for images, which are
-   * compressed server-side before storage (so they cannot use the presigned
-   * direct-to-storage path). Returns the stored key.
-   */
-  putObject(input: {
-    keyPrefix: string;
-    body: Buffer;
-    contentType: string;
-  }): Promise<{ key: string }>;
+  /** Confirms that a direct upload exists and matches the document reference. */
+  assertUploadedDocument(key: string, contentType: string, sizeBytes: number): Promise<void>;
 
   /** Issues a short-lived download URL for an authorised reader (admins/mods). */
   createPresignedDownload(key: string): Promise<{ downloadUrl: string; expiresAt: Date }>;

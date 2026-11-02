@@ -2,7 +2,7 @@
   "name": "@rentrust/api",
   "version": "0.1.0",
   "private": true,
-  "description": "RentTrust API — modular NestJS monolith (Fastify + Prisma + PostgreSQL/PostGIS + Redis/BullMQ)",
+  "description": "RenTrust API — modular NestJS monolith (Fastify + Prisma + PostgreSQL/PostGIS + Redis/BullMQ)",
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
@@ -31,7 +31,6 @@
     "@aws-sdk/s3-request-presigner": "^3.1146.0",
     "@fastify/cookie": "^9.4.0",
     "@fastify/helmet": "^11.1.1",
-    "@fastify/multipart": "^8.3.1",
     "@fastify/static": "^7.0.4",
     "@nestjs/common": "^10.4.4",
     "@nestjs/config": "^3.2.3",
@@ -47,12 +46,12 @@
     "class-validator": "^0.14.1",
     "ioredis": "^5.4.1",
     "nestjs-pino": "^4.1.0",
+    "nodemailer": "^10.0.15",
     "pino": "^9.4.0",
     "pino-http": "^10.3.0",
     "prisma": "^5.20.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "sharp": "^0.33.5",
     "uuid": "^10.0.0"
   },
   "devDependencies": {
@@ -62,6 +61,7 @@
     "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.10",
     "@types/node": "^22.7.4",
+    "@types/nodemailer": "^8.0.2",
     "@types/supertest": "^6.0.2",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.8.0",

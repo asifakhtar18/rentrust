@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
 import { AdminHeader, Panel, TableLoading, TableError, TableEmpty, Th, Td, ShortId } from '../admin-ui';
 import { RejectDialog } from '../reject-dialog';
+import { DocumentAccessButton } from '../document-access-button';
 
 export default function VerificationsPage() {
   const { request } = useAuth();
@@ -109,9 +110,17 @@ export default function VerificationsPage() {
                     <Badge tone="neutral">{humanizeTag(v.evidenceType)}</Badge>
                   </Td>
                   <Td>
-                    <span className="inline-flex items-center gap-1.5 t-body text-muted-foreground">
-                      <FileText className="size-3.5" aria-hidden /> {v.documents.length}
-                    </span>
+                    <div className="flex flex-col items-start gap-2">
+                      {v.documents.map((document) => (
+                        <div key={document.id} className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 t-helper text-muted-foreground">
+                            <FileText className="size-3.5" aria-hidden /> {Math.ceil(document.sizeBytes / 1024)} KB
+                          </span>
+                          <DocumentAccessButton documentId={document.id} endpoint="verifications" />
+                        </div>
+                      ))}
+                      {v.documents.length === 0 && <span className="t-helper">No documents</span>}
+                    </div>
                   </Td>
                   <Td>{v.reviewId ? <ShortId id={v.reviewId} /> : <span className="t-helper">—</span>}</Td>
                   <Td className="text-right">

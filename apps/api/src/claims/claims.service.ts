@@ -70,6 +70,7 @@ export class ClaimsService {
       if (!doc.storageKey.startsWith(prefix)) {
         throw new ForbiddenAppException('Document key does not belong to you.');
       }
+      await this.storage.assertUploadedDocument(doc.storageKey, doc.contentType, doc.sizeBytes);
     }
 
     // One active claim per (property, claimant, role) — DB partial unique index

@@ -8,11 +8,13 @@ import { ErrorCode } from '../common/errors/error-codes';
 import { JOB, RecalculateScoreJob } from '../queue/queue.constants';
 import { TRUST_SCORE_QUEUE } from '../queue/queue.module';
 import { TrustScoreEngine } from './trust-score.engine';
+import { EventBus } from '../events/event-bus';
+import { DomainEvent } from '../events/events';
 
 /**
- * Application-facing trust-score service. Enqueues asynchronous recalculation
- * (so review publishing never blocks on scoring) and serves the transparent
- * read model. Direct recalculation is also exposed for tests and admin tools.
+ * Application-facing trust-score service. Uses BullMQ on long-running Node
+ * hosts and inline recalculation in request-scoped/serverless environments.
+ * It also serves the transparent score read model.
  */
 @Injectable()
 export class TrustScoreService {
@@ -20,21 +22,34 @@ export class TrustScoreService {
     private readonly prisma: PrismaService,
     private readonly engine: TrustScoreEngine,
     private readonly config: ConfigService<AppConfig, true>,
-    @Inject(TRUST_SCORE_QUEUE) private readonly queue: Queue<RecalculateScoreJob>,
+    @Inject(TRUST_SCORE_QUEUE) private readonly queue: Queue<RecalculateScoreJob> | null,
+    private readonly events: EventBus,
   ) {}
 
   /**
-   * Enqueue a recalculation (deduplicated per property via a stable jobId). In
-   * the test environment there is no running worker, so we recalculate inline
-   * to keep tests deterministic without a background loop. In all other
-   * environments this is strictly asynchronous so review publishing never
-   * blocks on scoring.
+   * Recalculate inline when running in Vercel or tests because a serverless
+   * function cannot host a persistent BullMQ worker. Long-running Node hosts
+   * enqueue a deduplicated job instead.
    */
   async requestRecalculation(propertyId: string): Promise<void> {
-    if (this.config.get('env', { infer: true }) === 'test') {
-      await this.engine.recalculate(propertyId);
+    const property = await this.prisma.property.findFirst({
+      where: { id: propertyId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!property) {
+      throw new NotFoundAppException('Property not found', ErrorCode.PROPERTY_NOT_FOUND);
+    }
+    if (this.config.get('queue', { infer: true }).driver === 'inline') {
+      const result = await this.engine.recalculate(propertyId);
+      if (result) {
+        await this.events.emit(DomainEvent.TRUST_SCORE_UPDATED, {
+          propertyId,
+          overall: result.overall,
+        });
+      }
       return;
     }
+    if (!this.queue) throw new Error('Trust-score queue is unavailable.');
     await this.queue.add(
       JOB.RECALCULATE_PROPERTY_SCORE,
       { propertyId },

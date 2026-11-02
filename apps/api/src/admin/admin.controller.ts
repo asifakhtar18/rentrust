@@ -46,8 +46,9 @@ export class AdminController {
   // Users
   @Get('users')
   @ApiOperation({ summary: 'List users' })
-  async users(@Query() q: OffsetPaginationQuery, @Query('search') search?: string) {
-    const r = await this.admin.listUsers({ ...q, search });
+  async users(@Query() q: OffsetPaginationQuery, @Query('search') search?: string | string[]) {
+    const searchTerm = Array.isArray(search) ? search.join(',') : search;
+    const r = await this.admin.listUsers({ ...q, search: searchTerm });
     return { data: r.items, meta: { total: r.total, page: r.page, pageSize: r.pageSize } };
   }
 

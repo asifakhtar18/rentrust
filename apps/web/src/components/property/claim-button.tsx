@@ -7,9 +7,10 @@ import { useAuth } from '@/lib/auth-context';
 import type { ClaimRole, PresignedUpload, ClaimDocumentRef } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/cn';
+import { MAX_PRIVATE_DOCUMENT_BYTES, preparePrivateDocument } from '@/lib/private-document';
 
 const ALLOWED = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB — mirrors the backend limit.
+const MAX_BYTES = MAX_PRIVATE_DOCUMENT_BYTES;
 
 /**
  * Owner-facing "Claim this property" flow.
@@ -19,10 +20,8 @@ const MAX_BYTES = 10 * 1024 * 1024; // 10 MB — mirrors the backend limit.
  *   2. PUT the file bytes to uploadUrl (direct-to-storage)
  *   3. POST /properties/:id/claim { role, documents: [{ storageKey, ... }] }
  *
- * In local dev the storage provider is a mock that returns a non-functional
- * uploadUrl; the PUT there is best-effort and the claim still submits with the
- * returned key (the backend validates key ownership, not byte presence). In
- * production the PUT hits real object storage.
+ * Images are resized and re-encoded in the browser before direct upload.
+ * Local mock storage returns a non-functional upload URL, so the PUT is skipped.
  */
 export function ClaimButton({ propertyId, isClaimed }: { propertyId: string; isClaimed: boolean }) {
   const { user } = useAuth();
@@ -93,27 +92,34 @@ function ClaimDialog({ propertyId, onClose }: { propertyId: string; onClose: () 
     setBusy(true);
     setError(null);
     try {
+      const prepared = await preparePrivateDocument(file);
       // 1) Ask the backend for a presigned upload scoped to this user.
       const presigned = await request<PresignedUpload>('/claims/upload-url', {
         method: 'POST',
-        body: JSON.stringify({ contentType: file.type, sizeBytes: file.size }),
+        body: JSON.stringify({ contentType: prepared.contentType, sizeBytes: prepared.sizeBytes }),
       });
 
-      // 2) Upload the bytes directly to storage. Best-effort in dev (mock host).
-      try {
-        await fetch(presigned.uploadUrl, {
+      // 2) Upload directly to storage. The local mock provider intentionally
+      // has no upload endpoint; production uploads must succeed before a claim
+      // can be created.
+      if (new URL(presigned.uploadUrl).hostname !== 'mock-storage.local') {
+        const uploadResponse = await fetch(presigned.uploadUrl, {
           method: 'PUT',
           headers: presigned.requiredHeaders,
-          body: file,
+          body: prepared.body,
         });
-      } catch {
-        // Mock storage in dev has no real endpoint; the claim can still be
-        // created with the issued key. Real storage (prod) will succeed here.
+        if (!uploadResponse.ok) {
+          throw new Error('Document upload failed. Please try again.');
+        }
       }
 
       // 3) Create the claim referencing the uploaded document.
       const documents: ClaimDocumentRef[] = [
-        { storageKey: presigned.key, contentType: file.type, sizeBytes: file.size },
+        {
+          storageKey: presigned.key,
+          contentType: prepared.contentType,
+          sizeBytes: prepared.sizeBytes,
+        },
       ];
       await request(`/properties/${propertyId}/claim`, {
         method: 'POST',
@@ -160,7 +166,8 @@ function ClaimDialog({ propertyId, onClose }: { propertyId: string; onClose: () 
             <CheckCircle2 className="mx-auto size-10 text-success" aria-hidden />
             <p className="mt-3 t-label text-foreground">Claim submitted</p>
             <p className="mx-auto mt-1 max-w-xs t-helper">
-              Our team will review your evidence. You can track the status under “My claims” in your profile.
+              Our team will review your evidence. You can track the status under “My claims” in your
+              profile.
             </p>
             <div className="mt-5 flex justify-center gap-2">
               <Button variant="secondary" size="sm" onClick={onClose}>
@@ -171,8 +178,9 @@ function ClaimDialog({ propertyId, onClose }: { propertyId: string; onClose: () 
         ) : (
           <>
             <p className="mt-2 t-helper">
-              Verify that you own or manage this property. Submitting sends your evidence to our team for review —
-              approval grants you the matching role and the ability to respond publicly to reviews.
+              Verify that you own or manage this property. Submitting sends your evidence to our
+              team for review — approval grants you the matching role and the ability to respond
+              publicly to reviews.
             </p>
 
             {/* Role */}
@@ -201,11 +209,15 @@ function ClaimDialog({ propertyId, onClose }: { propertyId: string; onClose: () 
             {/* Evidence */}
             <div className="mt-5">
               <p className="t-label text-foreground">Proof of ownership / management</p>
-              <p className="mt-1 t-helper">PDF or image, up to 10 MB. e.g. sale deed, tax receipt, or management agreement.</p>
+              <p className="mt-1 t-helper">
+                PDF or image, up to 10 MB. e.g. sale deed, tax receipt, or management agreement.
+              </p>
               <label
                 className={cn(
                   'mt-2 flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3.5 transition-colors',
-                  file ? 'border-primary/40 bg-primary/[0.04]' : 'border-border hover:border-primary/40',
+                  file
+                    ? 'border-primary/40 bg-primary/[0.04]'
+                    : 'border-border hover:border-primary/40',
                 )}
               >
                 <input
@@ -223,7 +235,11 @@ function ClaimDialog({ propertyId, onClose }: { propertyId: string; onClose: () 
                   <span className="block truncate t-body text-foreground">
                     {file ? file.name : 'Choose a file'}
                   </span>
-                  {file && <span className="block t-helper">{(file.size / 1024 / 1024).toFixed(2)} MB</span>}
+                  {file && (
+                    <span className="block t-helper">
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  )}
                 </span>
               </label>
             </div>

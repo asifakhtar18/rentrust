@@ -5,7 +5,7 @@ import { PresignedUpload, StorageProvider } from './storage.interface';
 /**
  * Development/test storage provider. Produces deterministic fake signed URLs
  * and keeps no bytes. It lets the entire verification flow (request URL ->
- * register document -> admin review) run end-to-end without MinIO/S3, while
+ * register document -> admin review) run locally without R2, while
  * preserving the real contract: callers persist the returned `key`, never a
  * public URL. Never selected in production (STORAGE_DRIVER=mock).
  */
@@ -29,14 +29,8 @@ export class MockStorageProvider implements StorageProvider {
     };
   }
 
-  async putObject(input: {
-    keyPrefix: string;
-    body: Buffer;
-    contentType: string;
-  }): Promise<{ key: string }> {
-    const key = `${input.keyPrefix}/${randomUUID()}`;
-    this.logger.debug(`Mock stored ${input.body.length} bytes at ${key}`);
-    return { key };
+  async assertUploadedDocument(): Promise<void> {
+    // The local mock has no object bytes to inspect.
   }
 
   async createPresignedDownload(key: string): Promise<{ downloadUrl: string; expiresAt: Date }> {

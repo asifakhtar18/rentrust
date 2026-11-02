@@ -3,16 +3,19 @@ import { ConfigService } from '@nestjs/config';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
 import { AppConfig } from '../config/configuration';
-import { PresignedUpload, StorageProvider } from './storage.interface';
+import { BadRequestAppException } from '../common/errors/app.exception';
+import { ErrorCode } from '../common/errors/error-codes';
+import { MAX_DOCUMENT_SIZE_BYTES, PresignedUpload, StorageProvider } from './storage.interface';
 
 /**
- * S3-compatible storage provider (AWS S3, MinIO, Cloudflare R2). Issues
+ * Cloudflare R2 S3-compatible storage provider. Issues
  * presigned PUT/GET URLs so file bytes never pass through the API server, and
  * the bucket is private — objects are only reachable via short-lived signed
  * URLs we mint for authorised readers. Selected by STORAGE_DRIVER=s3.
@@ -59,21 +62,41 @@ export class S3StorageProvider implements StorageProvider {
     };
   }
 
-  async putObject(input: {
-    keyPrefix: string;
-    body: Buffer;
-    contentType: string;
-  }): Promise<{ key: string }> {
-    const key = `${input.keyPrefix}/${randomUUID()}`;
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: input.body,
-        ContentType: input.contentType,
-      }),
-    );
-    return { key };
+  async assertUploadedDocument(key: string, contentType: string, sizeBytes: number): Promise<void> {
+    let metadata;
+    try {
+      metadata = await this.client.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.name === 'NotFound' ||
+          error.name === 'NoSuchKey' ||
+          error.name === '404' ||
+          ('$metadata' in error &&
+            (error.$metadata as { httpStatusCode?: number })?.httpStatusCode === 404))
+      ) {
+        throw new BadRequestAppException(
+          'Uploaded document was not found. Please upload it again.',
+        );
+      }
+      throw error;
+    }
+    if (
+      !metadata.ContentLength ||
+      metadata.ContentLength > MAX_DOCUMENT_SIZE_BYTES ||
+      metadata.ContentLength !== sizeBytes
+    ) {
+      throw new BadRequestAppException(
+        'Uploaded document size does not match.',
+        ErrorCode.FILE_TOO_LARGE,
+      );
+    }
+    if (metadata.ContentType !== contentType) {
+      throw new BadRequestAppException(
+        'Uploaded document type does not match.',
+        ErrorCode.INVALID_FILE_TYPE,
+      );
+    }
   }
 
   async createPresignedDownload(key: string): Promise<{ downloadUrl: string; expiresAt: Date }> {

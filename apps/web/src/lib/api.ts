@@ -5,8 +5,17 @@
 
 import type { ApiMeta } from './types';
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
+/** Resolve the backend at call time so a missing production URL is reported
+ * when a request is made, without breaking static page generation. */
+export function getApiBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const base =
+    configured ?? (process.env.NODE_ENV === 'development' ? 'http://localhost:4000/api/v1' : '');
+  if (!base) {
+    throw new Error('NEXT_PUBLIC_API_BASE_URL must be configured for production.');
+  }
+  return base.replace(/\/+$/, '');
+}
 
 // ---- Error class ----
 
@@ -57,15 +66,11 @@ export async function apiFetch<T>(
   if (accessToken) {
     headers.set('Authorization', `Bearer ${accessToken}`);
   }
-  if (
-    fetchInit.body &&
-    typeof fetchInit.body === 'string' &&
-    !headers.has('Content-Type')
-  ) {
+  if (fetchInit.body && typeof fetchInit.body === 'string' && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const url = path.startsWith('http') ? path : `${API_BASE_URL}${path}`;
+  const url = path.startsWith('http') ? path : `${getApiBaseUrl()}${path}`;
 
   const res = await fetch(url, { ...fetchInit, headers });
 
@@ -105,9 +110,7 @@ export function qs(params: Record<string, unknown>): string {
   const parts: string[] = [];
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') {
-      parts.push(
-        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`,
-      );
+      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
     }
   }
   return parts.length ? `?${parts.join('&')}` : '';

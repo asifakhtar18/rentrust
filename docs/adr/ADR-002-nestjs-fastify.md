@@ -8,7 +8,7 @@
   - ✅ NestJS gives DI, modules, guards/interceptors/pipes, and
     `@nestjs/swagger` doc generation that match our modular-monolith design.
   - ✅ Fastify offers higher throughput and lower overhead than Express, with a
-    mature plugin ecosystem (helmet, cookie, multipart).
+    mature plugin ecosystem (helmet and cookie).
   - ⚠️ A few integrations are Express-first; we use Fastify-native plugins and
     typed request handling to avoid friction.
 - **Alternatives considered:** NestJS + Express (lower throughput); bare Fastify

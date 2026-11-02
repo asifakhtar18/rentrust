@@ -19,7 +19,7 @@ async function bootstrap(): Promise<void> {
   app.enableShutdownHooks();
 
   const logger = app.get(Logger);
-  logger.log('RentTrust worker started; processing background jobs.');
+  logger.log('RenTrust worker started; processing background jobs.');
 
   // Keep the process alive; BullMQ workers are started by their modules'
   // lifecycle hooks. Graceful shutdown is handled by Nest shutdown hooks.

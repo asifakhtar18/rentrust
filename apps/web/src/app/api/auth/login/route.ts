@@ -5,7 +5,7 @@
 /* ------------------------------------------------------------------ */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { backendAuth, setRefreshCookie } from '@/lib/bff';
+import { backendAuth, noStore, setRefreshCookie } from '@/lib/bff';
 import type { AuthTokens } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
@@ -16,14 +16,14 @@ export async function POST(req: NextRequest) {
   >('/auth/login', {
     email: body.email,
     password: body.password,
-  });
+  }, { clientIp: req.headers.get('x-real-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() });
 
   if (!ok) {
-    return NextResponse.json(data, { status });
+    return noStore(NextResponse.json(data, { status }));
   }
 
   const tokens = data.data;
-  const res = NextResponse.json({ accessToken: tokens.accessToken });
+  const res = noStore(NextResponse.json({ accessToken: tokens.accessToken }));
   setRefreshCookie(res, tokens.refreshToken);
   return res;
 }

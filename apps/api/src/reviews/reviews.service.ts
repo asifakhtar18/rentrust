@@ -8,6 +8,7 @@ import {
   ConflictAppException,
   ForbiddenAppException,
   NotFoundAppException,
+  ValidationException,
 } from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-codes';
 import { buildCursorPage, decodeCursor, PaginatedResult } from '../common/pagination/cursor.util';
@@ -152,6 +153,18 @@ export class ReviewsService {
   ): Promise<PaginatedResult<PublicReview>> {
     const property = await this.properties.getById(propertyId);
     const cursor = decodeCursor<ReviewCursor>(query.cursor);
+    if (
+      query.cursor &&
+      (!cursor ||
+        typeof cursor.publishedAt !== 'string' ||
+        !Number.isFinite(new Date(cursor.publishedAt).getTime()) ||
+        typeof cursor.id !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          cursor.id,
+        ))
+    ) {
+      throw new ValidationException('Invalid review list cursor.');
+    }
 
     const where: Prisma.ReviewWhereInput = {
       propertyId: property.id,

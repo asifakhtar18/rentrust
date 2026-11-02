@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Prisma, Property, PropertyStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../database/prisma.service';
-import { ConflictAppException, NotFoundAppException } from '../common/errors/app.exception';
+import {
+  ConflictAppException,
+  NotFoundAppException,
+  ValidationException,
+} from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-codes';
 import { normalizeName, slugify } from '../common/util/slug.util';
 import { buildCursorPage, decodeCursor, PaginatedResult } from '../common/pagination/cursor.util';
@@ -94,11 +98,11 @@ export class PropertiesService {
         : null,
       this.prisma.propertyScore.findUnique({ where: { propertyId: property.id } }),
       this.prisma.propertyLandlord.findMany({
-        where: { propertyId: property.id },
+        where: { propertyId: property.id, landlord: { is: { deletedAt: null } } },
         include: { landlord: true },
       }),
       this.prisma.propertyManagerLink.findMany({
-        where: { propertyId: property.id },
+        where: { propertyId: property.id, manager: { is: { deletedAt: null } } },
         include: { manager: true },
       }),
       this.prisma.review.count({
@@ -122,6 +126,18 @@ export class PropertiesService {
    */
   async list(query: ListPropertiesQuery): Promise<PaginatedResult<Property>> {
     const cursor = decodeCursor<PropertyListCursor>(query.cursor);
+    if (
+      query.cursor &&
+      (!cursor ||
+        typeof cursor.createdAt !== 'string' ||
+        !Number.isFinite(new Date(cursor.createdAt).getTime()) ||
+        typeof cursor.id !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          cursor.id,
+        ))
+    ) {
+      throw new ValidationException('Invalid property list cursor.');
+    }
     const where: Prisma.PropertyWhereInput = {
       deletedAt: null,
       status: PropertyStatus.ACTIVE,
@@ -216,35 +232,54 @@ export class PropertiesService {
    */
   async create(dto: CreatePropertyDto): Promise<Property> {
     const canonicalName = normalizeName(dto.displayName);
-
-    const duplicate = await this.findCanonicalDuplicate(canonicalName, dto.localityId);
-    if (duplicate) {
-      throw new ConflictAppException(
-        'A property with this name already exists in this locality.',
-        ErrorCode.PROPERTY_ALREADY_EXISTS,
-      );
-    }
-
-    const addressId = dto.address ? (await this.createAddress(dto.address)).id : undefined;
     const localityId = dto.localityId ?? dto.address?.localityId;
+    return this.prisma.$transaction(async (tx) => {
+      // Share the same transaction-scoped lock as the Worker so concurrent
+      // Nest and Worker creates cannot both pass the canonical-name check.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${canonicalName}, 0))`;
+      const duplicate = await tx.property.findFirst({
+        where: {
+          deletedAt: null,
+          canonicalName,
+          ...(localityId ? { localityId } : {}),
+        },
+      });
+      if (duplicate) {
+        throw new ConflictAppException(
+          'A property with this name already exists in this locality.',
+          ErrorCode.PROPERTY_ALREADY_EXISTS,
+        );
+      }
 
-    return this.prisma.property.create({
-      data: {
-        canonicalName,
-        displayName: dto.displayName,
-        slug: this.uniqueSlug(dto.displayName),
-        aliases: this.normaliseAliases(dto.aliases),
-        propertyType: dto.propertyType,
-        status: PropertyStatus.ACTIVE,
-        addressId,
-        localityId,
-        latitude: dto.latitude ?? null,
-        longitude: dto.longitude ?? null,
-        developer: dto.developer ?? null,
-        yearBuilt: dto.yearBuilt ?? null,
-        amenities: dto.amenities ?? [],
-        description: dto.description ?? null,
-      },
+      const address = dto.address
+        ? await tx.address.create({
+            data: {
+              line1: dto.address.line1 ?? null,
+              line2: dto.address.line2 ?? null,
+              cityId: dto.address.cityId,
+              localityId: dto.address.localityId ?? null,
+              postalCode: dto.address.postalCode ?? null,
+            },
+          })
+        : null;
+      return tx.property.create({
+        data: {
+          canonicalName,
+          displayName: dto.displayName,
+          slug: this.uniqueSlug(dto.displayName),
+          aliases: this.normaliseAliases(dto.aliases),
+          propertyType: dto.propertyType,
+          status: PropertyStatus.ACTIVE,
+          addressId: address?.id,
+          localityId,
+          latitude: dto.latitude ?? null,
+          longitude: dto.longitude ?? null,
+          developer: dto.developer ?? null,
+          yearBuilt: dto.yearBuilt ?? null,
+          amenities: dto.amenities ?? [],
+          description: dto.description ?? null,
+        },
+      });
     });
   }
 
@@ -311,31 +346,6 @@ export class PropertiesService {
       createdAt: p.createdAt,
       updatedAt: p.updatedAt,
     };
-  }
-
-  private async findCanonicalDuplicate(
-    canonicalName: string,
-    localityId?: string,
-  ): Promise<Property | null> {
-    return this.prisma.property.findFirst({
-      where: {
-        deletedAt: null,
-        canonicalName,
-        ...(localityId ? { localityId } : {}),
-      },
-    });
-  }
-
-  private async createAddress(input: NonNullable<CreatePropertyDto['address']>) {
-    return this.prisma.address.create({
-      data: {
-        line1: input.line1 ?? null,
-        line2: input.line2 ?? null,
-        cityId: input.cityId,
-        localityId: input.localityId ?? null,
-        postalCode: input.postalCode ?? null,
-      },
-    });
   }
 
   private normaliseAliases(aliases?: string[]): string[] {

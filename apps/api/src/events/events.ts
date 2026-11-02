@@ -10,6 +10,7 @@ export const DomainEvent = {
   REVIEW_SUBMITTED: 'REVIEW_SUBMITTED',
   REVIEW_VERIFIED: 'REVIEW_VERIFIED',
   REVIEW_PUBLISHED: 'REVIEW_PUBLISHED',
+  REVIEW_HIDDEN: 'REVIEW_HIDDEN',
   REVIEW_REPORTED: 'REVIEW_REPORTED',
   REVIEW_REMOVED: 'REVIEW_REMOVED',
   PROPERTY_CREATED: 'PROPERTY_CREATED',
@@ -26,6 +27,7 @@ export interface DomainEventPayloads {
   [DomainEvent.REVIEW_SUBMITTED]: { reviewId: string; propertyId: string };
   [DomainEvent.REVIEW_VERIFIED]: { reviewId: string; propertyId: string };
   [DomainEvent.REVIEW_PUBLISHED]: { reviewId: string; propertyId: string };
+  [DomainEvent.REVIEW_HIDDEN]: { reviewId: string; propertyId: string };
   [DomainEvent.REVIEW_REPORTED]: { reviewId: string; reportId: string };
   [DomainEvent.REVIEW_REMOVED]: { reviewId: string; propertyId: string };
   [DomainEvent.PROPERTY_CREATED]: { propertyId: string };

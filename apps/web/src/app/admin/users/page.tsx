@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import type { AdminUser } from '@/lib/types';
+import type { AdminUser, UserRole } from '@/lib/types';
 import { Badge, Input } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
 import { AdminHeader, Panel, TableLoading, TableError, TableEmpty, Th, Td } from '../admin-ui';
 import { cn } from '@/lib/cn';
 
 const PAGE_SIZE = 20;
+const AVAILABLE_ROLES = ['USER', 'OWNER', 'MANAGER', 'MODERATOR', 'ADMIN'] as const;
 
 export default function UsersPage() {
   const { request } = useAuth();
@@ -19,6 +20,8 @@ export default function UsersPage() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [savingUser, setSavingUser] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(
     async (p: number, q: string) => {
@@ -47,6 +50,21 @@ export default function UsersPage() {
     setQuery(search);
   }
 
+  async function changeRoles(user: AdminUser, roles: UserRole[]) {
+    setSavingUser(user.id);
+    setActionError(null);
+    try {
+      const updated = await request<{ id: string; roles: UserRole[] }>(`/admin/users/${user.id}/roles`, {
+        method: 'PUT', body: JSON.stringify({ roles }),
+      });
+      setItems((current) => current.map((item) => item.id === user.id ? { ...item, roles: updated.roles } : item));
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Could not update roles.');
+    } finally {
+      setSavingUser(null);
+    }
+  }
+
   return (
     <div>
       <AdminHeader
@@ -67,6 +85,7 @@ export default function UsersPage() {
       />
 
       <Panel>
+        {actionError && <p role="alert" className="border-b border-destructive/30 bg-destructive/5 px-4 py-3 t-meta text-destructive">{actionError}</p>}
         {loading ? (
           <TableLoading />
         ) : error ? (
@@ -92,11 +111,14 @@ export default function UsersPage() {
                   <Td className="text-muted-foreground">{u.displayName ?? '—'}</Td>
                   <Td>
                     <div className="flex flex-wrap gap-1">
-                      {u.roles.map((r) => (
-                        <Badge key={r} tone={r === 'ADMIN' ? 'danger' : r === 'MODERATOR' ? 'warning' : 'neutral'}>
-                          {r}
-                        </Badge>
-                      ))}
+                      <div className="flex flex-wrap gap-1">{u.roles.map((r) => (
+                        <Badge key={r} tone={r === 'ADMIN' ? 'danger' : r === 'MODERATOR' ? 'warning' : 'neutral'}>{r}</Badge>
+                      ))}</div>
+                      <select aria-label={`Roles for ${u.email}`} multiple value={u.roles} disabled={savingUser === u.id}
+                        onChange={(e) => void changeRoles(u, Array.from(e.currentTarget.selectedOptions, (option) => option.value as UserRole))}
+                        className="mt-2 min-w-32 rounded border border-border bg-background p-1 text-xs">
+                        {AVAILABLE_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
+                      </select>
                     </div>
                   </Td>
                   <Td>

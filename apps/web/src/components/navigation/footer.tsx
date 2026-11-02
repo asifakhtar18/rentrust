@@ -11,7 +11,7 @@ export function Footer() {
               <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
                 <ShieldCheck className="size-4" aria-hidden />
               </span>
-              <span className="t-body font-semibold text-foreground">RentTrust</span>
+              <span className="t-body font-semibold text-foreground">RenTrust</span>
             </div>
             <p className="mt-3 text-[14px] text-muted-foreground">
               Know the place before you rent. Real resident experiences and transparent trust scores.
@@ -24,7 +24,7 @@ export function Footer() {
           </div>
         </div>
         <p className="mt-12 text-[13px] text-muted-foreground">
-          Reviews reflect individual resident experiences, not verified platform facts. © {new Date().getFullYear()} RentTrust.
+          Reviews reflect individual resident experiences, not verified platform facts. © {new Date().getFullYear()} RenTrust.
         </p>
       </div>
     </footer>

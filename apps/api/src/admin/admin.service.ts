@@ -14,7 +14,11 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { PropertiesService } from '../properties/properties.service';
 import { AuditService } from '../audit/audit.service';
-import { ConflictAppException, NotFoundAppException } from '../common/errors/app.exception';
+import {
+  ConflictAppException,
+  NotFoundAppException,
+  ValidationException,
+} from '../common/errors/app.exception';
 import { ErrorCode } from '../common/errors/error-codes';
 import { slugify } from '../common/util/slug.util';
 import { OffsetPaginationQuery } from '../common/dto/pagination.dto';
@@ -112,6 +116,9 @@ export class AdminService {
   }
 
   async setUserRoles(actorId: string, userId: string, roles: User['roles']): Promise<User> {
+    if (actorId === userId && !roles.includes('ADMIN')) {
+      throw new ValidationException('You cannot remove your own admin role.');
+    }
     const user = await this.prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
     if (!user) {
       throw new NotFoundAppException('User not found', ErrorCode.USER_NOT_FOUND);
@@ -132,6 +139,9 @@ export class AdminService {
     userId: string,
     status: 'ACTIVE' | 'SUSPENDED',
   ): Promise<User> {
+    if (actorId === userId && status === 'SUSPENDED') {
+      throw new ValidationException('You cannot suspend your own account.');
+    }
     const user = await this.prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
     if (!user) {
       throw new NotFoundAppException('User not found', ErrorCode.USER_NOT_FOUND);
@@ -192,7 +202,9 @@ export class AdminService {
   /** Links a landlord to a property (property may have many landlords). */
   async linkLandlord(propertyId: string, dto: LinkLandlordDto) {
     const property = await this.properties.getById(propertyId);
-    const landlord = await this.prisma.landlord.findUnique({ where: { id: dto.landlordId } });
+    const landlord = await this.prisma.landlord.findFirst({
+      where: { id: dto.landlordId, deletedAt: null },
+    });
     if (!landlord) {
       throw new NotFoundAppException('Landlord not found', ErrorCode.NOT_FOUND);
     }
@@ -244,8 +256,7 @@ export class AdminService {
     const skipped: RowError[] = [...parsed.errors];
 
     if (!dto.dryRun) {
-      for (let i = 0; i < parsed.valid.length; i++) {
-        const row = parsed.valid[i];
+      for (const row of parsed.valid) {
         try {
           const property = await this.properties.create({
             displayName: row.displayName,
@@ -261,7 +272,7 @@ export class AdminService {
         } catch (err) {
           // Duplicate or other domain error — report, continue.
           const message = err instanceof Error ? err.message : 'Unknown error';
-          skipped.push({ row: i + 1, errors: [message] });
+          skipped.push({ row: row.rowNumber, errors: [message] });
         }
       }
       await this.audit.record({

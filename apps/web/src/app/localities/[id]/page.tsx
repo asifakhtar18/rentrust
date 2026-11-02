@@ -28,11 +28,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   try {
     const { data } = await apiFetch<LocalityIntelligence>(`/localities/${params.id}`);
     return {
-      title: `${data.locality.name} rentals · RentTrust`,
+      title: `${data.locality.name} rentals · RenTrust`,
       description: `Resident sentiment and trust scores for rental properties in ${data.locality.name}, based on verified reviews.`,
     };
   } catch {
-    return { title: 'Locality · RentTrust' };
+    return { title: 'Locality · RenTrust' };
   }
 }
 

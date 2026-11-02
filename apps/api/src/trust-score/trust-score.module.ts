@@ -30,6 +30,7 @@ export class TrustScoreModule implements OnModuleInit {
       this.trustScore.requestRecalculation(payload.propertyId);
 
     this.events.on(DomainEvent.REVIEW_PUBLISHED, recalc);
+    this.events.on(DomainEvent.REVIEW_HIDDEN, recalc);
     this.events.on(DomainEvent.REVIEW_REMOVED, recalc);
     this.events.on(DomainEvent.REVIEW_VERIFIED, recalc);
   }

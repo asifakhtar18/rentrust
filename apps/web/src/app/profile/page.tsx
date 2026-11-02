@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, ShieldCheck, Mail, FileText, LogOut, Lock, KeyRound } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import type { MyReview, ReviewStatus, MyClaim, ClaimStatus } from '@/lib/types';
+import type { MyReview, ReviewStatus, MyClaim, ClaimStatus, MyVerification } from '@/lib/types';
 import { TENURE_LABELS } from '@/lib/labels';
 import { Section, Card, EmptyState, Badge } from '@/components/ui/primitives';
 import { LinkButton, Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [reviews, setReviews] = useState<MyReview[]>([]);
   const [claims, setClaims] = useState<MyClaim[]>([]);
+  const [verifications, setVerifications] = useState<MyVerification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,12 +47,14 @@ export default function ProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const [reviewData, claimData] = await Promise.all([
+      const [reviewData, claimData, verificationData] = await Promise.all([
         request<MyReview[]>('/me/reviews'),
         request<MyClaim[]>('/claims/mine').catch(() => [] as MyClaim[]),
+        request<MyVerification[]>('/verifications/mine').catch(() => [] as MyVerification[]),
       ]);
       setReviews(reviewData);
       setClaims(claimData);
+      setVerifications(verificationData);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load your reviews.');
     } finally {
@@ -137,6 +140,35 @@ export default function ProfilePage() {
             </div>
           </Card>
 
+          <Card className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="t-label text-foreground">Resident verification</p>
+                <p className="mt-1 t-helper">
+                  Share private residency evidence with our review team to support a verified-resident badge.
+                </p>
+              </div>
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+            </div>
+            <LinkButton href="/verifications/new" variant="secondary" size="sm" className="mt-4">
+              Start verification
+            </LinkButton>
+            {verifications.length > 0 && (
+              <div className="mt-4 space-y-2 border-t border-border pt-3">
+                {verifications.slice(0, 3).map((verification) => (
+                  <div key={verification.id} className="flex items-center justify-between gap-3">
+                    <Link href={`/properties/${verification.propertyId}`} className="truncate t-helper text-primary hover:underline">
+                      View property
+                    </Link>
+                    <Badge tone={verification.status === 'VERIFIED' ? 'success' : verification.status === 'PENDING' ? 'warning' : 'danger'}>
+                      {verification.status === 'PENDING' ? 'In review' : verification.status.toLowerCase()}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
           <Button variant="secondary" size="md" className="w-full" onClick={() => void handleLogout()}>
             <LogOut className="size-4" aria-hidden /> Sign out
           </Button>
@@ -170,7 +202,7 @@ export default function ProfilePage() {
             ) : (
               <Card elevated className="divide-y divide-border overflow-hidden">
                 {reviews.map((r) => (
-                  <MyReviewRow key={r.id} review={r} />
+                  <MyReviewRow key={r.id} review={r} hasVerificationRequest={verifications.some((item) => item.reviewId === r.id)} />
                 ))}
               </Card>
             )}
@@ -221,7 +253,7 @@ function MyClaimRow({ claim }: { claim: MyClaim }) {
   );
 }
 
-function MyReviewRow({ review }: { review: MyReview }) {
+function MyReviewRow({ review, hasVerificationRequest }: { review: MyReview; hasVerificationRequest: boolean }) {
   const status = STATUS_META[review.status];
   const date = new Date(review.publishedAt ?? review.createdAt).toLocaleDateString('en-IN', {
     day: 'numeric',
@@ -247,7 +279,17 @@ function MyReviewRow({ review }: { review: MyReview }) {
       {review.overall != null && band && (
         <span className={cn('tabular t-label', band.color)}>{review.overall}</span>
       )}
-      <Badge tone={status.tone}>{status.label}</Badge>
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <Badge tone={status.tone}>{status.label}</Badge>
+        {!review.isVerified && !hasVerificationRequest && review.status !== 'REMOVED' && (
+          <Link
+            href={`/verifications/new?propertyId=${encodeURIComponent(review.propertyId)}&reviewId=${encodeURIComponent(review.id)}`}
+            className="inline-flex items-center gap-1 t-helper text-primary hover:underline"
+          >
+            <ShieldCheck className="size-3.5" aria-hidden /> Verify residency
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

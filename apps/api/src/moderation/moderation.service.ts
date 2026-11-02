@@ -26,7 +26,7 @@ import { ModerationDecision } from './dto/moderation.dto';
  *  - Internal moderation notes are stored on ModerationAction and never exposed
  *    on public surfaces.
  *  - Every decision records a ModerationAction (from/to status) and an audit
- *    entry, and publishing/removal emit events so trust scores recalc.
+ *    entry, and public review state changes emit events so trust scores recalc.
  */
 @Injectable()
 export class ModerationService {
@@ -55,8 +55,8 @@ export class ModerationService {
       data: { reviewId, reporterId: reporterId ?? null, reason, details: details ?? null },
     });
 
-    // A reported, currently-published review goes UNDER_REVIEW so moderators
-    // can look — but it stays visible (we do not hide on mere accusation).
+    // Open reports add the review to the moderator queue without changing its
+    // status; a report alone never hides a published review.
     await this.events.emit(DomainEvent.REVIEW_REPORTED, { reviewId, reportId: report.id });
     return report;
   }
@@ -162,6 +162,13 @@ export class ModerationService {
       // UNHIDE/RESTORE back to published should also refresh scores.
       if (toStatus === ReviewStatus.PUBLISHED) {
         await this.events.emit(DomainEvent.REVIEW_PUBLISHED, {
+          reviewId,
+          propertyId: review.propertyId,
+        });
+      } else if (toStatus === ReviewStatus.HIDDEN && fromStatus === ReviewStatus.PUBLISHED) {
+        // Hiding removes a review from the public score inputs without implying
+        // that it was removed or notifying the author that it was removed.
+        await this.events.emit(DomainEvent.REVIEW_HIDDEN, {
           reviewId,
           propertyId: review.propertyId,
         });

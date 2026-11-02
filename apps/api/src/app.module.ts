@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { RedisService } from './database/redis.service';
+import { RedisThrottlerStorage } from './database/redis-throttler.storage';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { randomUUID } from 'crypto';
@@ -27,6 +29,7 @@ import { AdminModule } from './admin/admin.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { EngagementModule } from './engagement/engagement.module';
+import { LandlordsModule } from './landlords/landlords.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -73,10 +76,14 @@ import { AppConfig } from './config/configuration';
       },
     }),
     ThrottlerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<AppConfig, true>) => {
+      imports: [DatabaseModule],
+      inject: [ConfigService, RedisService],
+      useFactory: (config: ConfigService<AppConfig, true>, redis: RedisService) => {
         const throttle = config.get('throttle', { infer: true });
-        return [{ ttl: throttle.ttlSeconds * 1000, limit: throttle.limit }];
+        return {
+          throttlers: [{ ttl: throttle.ttlSeconds * 1000, limit: throttle.limit }],
+          storage: new RedisThrottlerStorage(redis.client),
+        };
       },
     }),
     DatabaseModule,
@@ -100,6 +107,7 @@ import { AppConfig } from './config/configuration';
     AnalyticsModule,
     NotificationsModule,
     EngagementModule,
+    LandlordsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

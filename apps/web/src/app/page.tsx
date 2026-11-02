@@ -36,45 +36,44 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* ── HERO: Apple pattern — centered headline + subhead, with the product
-             (a real property + its live trust score) as the hero visual below. ── */}
+      {/* ── HERO: Apple pattern — centered headline + subhead, product below. ── */}
       <Section className="pt-20 text-center lg:pt-28">
-          <p className="eyebrow">The trust layer for renting</p>
-          <h1 className="t-display mx-auto mt-3 max-w-3xl text-foreground">
-            Know the place
-            <br />
-            before you rent.
-          </h1>
-          <p className="mx-auto mt-5 max-w-xl t-body text-muted-foreground">
-            Real resident experiences, property intelligence and transparent
-            trust scores — so you know what you&apos;re signing up for before you
-            move in.
-          </p>
-          <div className="mx-auto mt-9 max-w-xl">
-            <SearchBar />
-          </div>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 t-meta">
-            <span>Popular:</span>
-            {localities.slice(0, 3).map((l) => (
-              <Link key={l.id} href={`/localities/${l.id}`} className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
-                {l.name}
-              </Link>
-            ))}
-          </div>
+        <p className="eyebrow">The trust layer for renting</p>
+        <h1 className="t-display mx-auto mt-3 max-w-3xl text-foreground">
+          Know the place
+          <br />
+          before you rent.
+        </h1>
+        <p className="mx-auto mt-5 max-w-xl t-body text-muted-foreground">
+          Real resident experiences, property intelligence and transparent
+          trust scores — so you know what you&apos;re signing up for before you
+          move in.
+        </p>
+        <div className="mx-auto mt-9 max-w-xl">
+          <SearchBar />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 t-meta">
+          <span>Popular:</span>
+          {localities.slice(0, 3).map((l) => (
+            <Link key={l.id} href={`/localities/${l.id}`} className="text-muted-foreground underline-offset-4 hover:text-primary hover:underline">
+              {l.name}
+            </Link>
+          ))}
+        </div>
 
-          {/* The product itself is the hero visual — real property + trust score. */}
-          <div className="mx-auto mt-16 max-w-md pb-6">
-            {demo ? (
-              <DemoCard property={demo.property} score={demo.score} />
-            ) : (
-              <Card className="p-8 text-left" elevated>
-                <p className="t-callout text-muted-foreground">
-                  Property intelligence appears here as residents contribute reviews.
-                </p>
-              </Card>
-            )}
-          </div>
-        </Section>
+        {/* The product itself is the hero visual — real property + trust score. */}
+        <div className="mx-auto mt-16 max-w-md">
+          {demo ? (
+            <DemoCard property={demo.property} score={demo.score} />
+          ) : (
+            <Card className="p-8 text-left" elevated>
+              <p className="t-callout text-muted-foreground">
+                Property intelligence appears here as residents contribute reviews.
+              </p>
+            </Card>
+          )}
+        </div>
+      </Section>
 
       {/* ── PROBLEM STATEMENT — editorial, not cards ── */}
       <Section className="border-t border-border py-20">
@@ -86,7 +85,7 @@ export default async function HomePage() {
           <p className="mt-5 max-w-xl t-body text-muted-foreground">
             Deposit disputes, slow maintenance, unresponsive management — the
             things that actually matter are invisible until you&apos;ve moved in.
-            RentTrust surfaces them before you commit.
+            RenTrust surfaces them before you commit.
           </p>
         </div>
       </Section>

@@ -1,5 +1,10 @@
-import { DepositOutcome, MaintenanceResolutionBucket, ReviewAnswer, YesNoNa } from '@prisma/client';
-import { ReviewCategoryKey } from './review.constants';
+import type {
+  DepositOutcome,
+  MaintenanceResolutionBucket,
+  ReviewAnswer,
+  YesNoNa,
+} from '@prisma/client';
+import type { ReviewCategoryKey } from './review.constants';
 
 /**
  * Pure functions that translate a single review's structured answers into
@@ -22,7 +27,7 @@ function depositScore(outcome: DepositOutcome, explained: YesNoNa): number {
     NOT_RETURNED: 0,
   };
   // A clear explanation of deductions is a small positive signal.
-  const explanationBonus = explained === YesNoNa.YES ? 10 : 0;
+  const explanationBonus = explained === 'YES' ? 10 : 0;
   return Math.min(100, base[outcome] + explanationBonus);
 }
 

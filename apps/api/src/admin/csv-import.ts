@@ -1,4 +1,4 @@
-import { PropertyType } from '@prisma/client';
+import type { PropertyType } from '@prisma/client';
 
 /**
  * Minimal, dependency-free CSV parser + validator for admin property imports.
@@ -11,6 +11,7 @@ import { PropertyType } from '@prisma/client';
  */
 
 export interface ParsedPropertyRow {
+  rowNumber: number;
   displayName: string;
   propertyType: PropertyType;
   developer?: string;
@@ -31,7 +32,16 @@ export interface CsvParseResult {
 }
 
 const REQUIRED_HEADERS = ['display_name', 'property_type'];
-const PROPERTY_TYPE_VALUES = new Set(Object.values(PropertyType) as string[]);
+const PROPERTY_TYPE_VALUES = [
+  'APARTMENT',
+  'PG',
+  'CO_LIVING',
+  'HOSTEL',
+  'INDEPENDENT_HOUSE',
+  'VILLA',
+  'BUILDER_PROPERTY',
+] as const;
+const PROPERTY_TYPE_SET = new Set<string>(PROPERTY_TYPE_VALUES);
 
 /** Splits a single CSV line honouring double-quoted fields with commas. */
 function splitCsvLine(line: string): string[] {
@@ -95,7 +105,7 @@ export function parsePropertyCsv(csv: string): CsvParseResult {
     }
 
     const typeRaw = (cells[idx('property_type')] ?? '').toUpperCase();
-    if (!PROPERTY_TYPE_VALUES.has(typeRaw)) {
+    if (!PROPERTY_TYPE_SET.has(typeRaw)) {
       rowErrors.push(`property_type must be one of: ${[...PROPERTY_TYPE_VALUES].join(', ')}`);
     }
 
@@ -121,6 +131,7 @@ export function parsePropertyCsv(csv: string): CsvParseResult {
     }
 
     valid.push({
+      rowNumber: i,
       displayName,
       propertyType: typeRaw as PropertyType,
       developer: optional(cells[idx('developer')]),

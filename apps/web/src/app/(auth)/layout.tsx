@@ -10,7 +10,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <ShieldCheck className="size-5" aria-hidden />
           </span>
-          <span className="t-title3 text-foreground">RentTrust</span>
+          <span className="t-title3 text-foreground">RenTrust</span>
         </Link>
         {children}
       </div>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { API_BASE_URL } from '@/lib/api';
+import { getApiBaseUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, Field, Input } from '@/components/ui/primitives';
 
@@ -14,7 +14,7 @@ export default function ForgotPasswordPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    await fetch(`${API_BASE_URL}/auth/password-reset/request`, {
+    await fetch(`${getApiBaseUrl()}/auth/password-reset/request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),

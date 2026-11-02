@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/primitives';
 import { Button } from '@/components/ui/button';
 import { AdminHeader, Panel, TableLoading, TableError, TableEmpty, Th, Td, ShortId } from '../admin-ui';
 import { RejectDialog } from '../reject-dialog';
+import { DocumentAccessButton } from '../document-access-button';
 
 export default function ClaimsPage() {
   const { request } = useAuth();
@@ -109,9 +110,17 @@ export default function ClaimsPage() {
                     <Badge tone="brand">{humanizeTag(c.role)}</Badge>
                   </Td>
                   <Td>
-                    <span className="inline-flex items-center gap-1.5 t-body text-muted-foreground">
-                      <FileText className="size-3.5" aria-hidden /> {c.documents.length}
-                    </span>
+                    <div className="flex flex-col items-start gap-2">
+                      {c.documents.map((document) => (
+                        <div key={document.id} className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1.5 t-helper text-muted-foreground">
+                            <FileText className="size-3.5" aria-hidden /> {Math.ceil(document.sizeBytes / 1024)} KB
+                          </span>
+                          <DocumentAccessButton documentId={document.id} endpoint="claims" />
+                        </div>
+                      ))}
+                      {c.documents.length === 0 && <span className="t-helper">No documents</span>}
+                    </div>
                   </Td>
                   <Td>
                     <ShortId id={c.claimantId} />

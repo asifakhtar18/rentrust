@@ -1,246 +1,156 @@
-# RentTrust
+# RenTrust
 
 > **Know the place before you rent it.**
 
-RentTrust is an Indian rental-property **intelligence and resident-review**
-platform. A renter can research a property, building, landlord, PG, co-living
-space, or locality _before_ deciding to rent — combining property information,
-structured resident reviews, verification, transparent property-level trust
-scores, and locality intelligence.
+RenTrust is an Indian rental-property intelligence and resident-review platform.
+Renters can research properties, buildings, landlords, PGs, co-living spaces,
+and localities using structured resident reviews, verification, transparent
+trust scores, and locality intelligence.
 
-The MVP is **SEARCH → RESEARCH → TRUST → DECIDE**. It is _not_ a rental
-marketplace: no rent collection, bookings, broker marketplace, agreements, or
-payments.
+The MVP is **SEARCH → RESEARCH → TRUST → DECIDE**. It is not a rental
+marketplace: there are no rent collections, bookings, agreements, or payments.
 
-> ⚠️ The name "RentTrust" is provisional and easy to replace.
+## Product capabilities
 
----
-
-## Table of contents
-
-- [Product](#product)
-- [Architecture](#architecture)
-- [Tech stack](#tech-stack)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Environment variables](#environment-variables)
-- [Database, migrations, seed](#database-migrations-seed)
-- [Running locally](#running-locally)
-- [Testing](#testing)
-- [API documentation](#api-documentation)
-- [Docker](#docker)
-- [Deployment](#deployment)
-- [Project structure](#project-structure)
-- [Architecture decisions](#architecture-decisions)
-
----
-
-## Product
-
-- **Search** properties, landlords, PGs, co-living spaces, buildings, localities.
-- **Property profiles** with a transparent **Resident Trust Score** (per-category
-  breakdown, sample size, confidence), positive/negative themes, and reviews.
-- **Structured reviews** (17 questions, not free-text-only) with a clear
-  lifecycle and **anonymous public rendering** — reviewer identity is never
-  exposed.
-- **Verification** of residency via private documents (object storage; signed
-  URLs; never public).
-- **Moderation** with reporting, a moderator queue, heuristic PII/abuse flags,
-  decision history, and appeals. Negative reviews are never auto-removed.
-- **Property claims** and **owner responses** (clearly labelled; owners cannot
-  edit/delete reviews or see reviewer identity).
-- **Saved properties**, **comparison**, and **locality intelligence**.
-- **Admin** dashboard, management, and CSV import.
-
-Initial geography: Bengaluru (HSR Layout, Koramangala, Bellandur, Whitefield,
-Marathahalli). Multi-city/state/country ready — nothing is hard-coded to one
-city.
+- Search properties, landlords, PGs, co-living spaces, buildings, and localities.
+- Review property profiles, trust scores, confidence, category breakdowns, and
+  positive or negative themes.
+- Submit structured reviews with a lifecycle and anonymous public rendering.
+- Verify residency using private documents and moderator decisions.
+- Report reviews, moderate content, appeal decisions, and audit actions.
+- Support property claims and clearly labelled owner responses.
+- Save and compare properties, and explore locality intelligence.
+- Provide an admin dashboard, catalogue management, CSV import, and location
+  setup.
 
 ## Architecture
 
-A **modular monolith** (NestJS) with clear domain modules, backed by PostgreSQL
-+ PostGIS and Redis/BullMQ for background work. A Next.js frontend consumes the
-REST API. See [`docs/architecture.md`](docs/architecture.md) for the full
-picture and [`docs/adr`](docs/adr) for decision records.
+- **Frontend:** Next.js App Router on Vercel (`apps/web`).
+- **API:** NestJS + Fastify on Vercel Functions (`apps/api`).
+- **Database:** Supabase PostgreSQL with PostGIS, provisioned through Vercel.
+- **Redis:** Upstash Redis, provisioned through Vercel.
+- **Private files:** Cloudflare R2 through its S3-compatible API. R2 is used
+  only for file storage.
+- **Trust-score recalculation:** inline on Vercel Functions; BullMQ remains
+  available for long-running Node deployments.
 
-```
-apps/
-  api/   NestJS API + BullMQ worker (this repo's backend)
-  web/   Next.js frontend (Apple-inspired design)   ← built last
-docs/
-  architecture.md
-  adr/   ADR-001 … ADR-009
-```
-
-## Tech stack
-
-| Area            | Choice                                             |
-| --------------- | -------------------------------------------------- |
-| Language        | TypeScript (strict)                                |
-| API framework   | NestJS on **Fastify**                              |
-| Database        | PostgreSQL + **PostGIS**                           |
-| ORM             | **Prisma**                                         |
-| Cache / queues  | Redis + **BullMQ**                                 |
-| Auth            | JWT access + rotating refresh, **argon2** hashing  |
-| Object storage  | S3-compatible — **Cloudflare R2** (prod) / MinIO   |
-| Images          | Server-side compression via **sharp** (WebP, EXIF-stripped) |
-| Search          | PostgreSQL full-text + pg_trgm + PostGIS           |
-| Docs            | OpenAPI / Swagger                                  |
-| Tests           | Jest (unit + e2e)                                  |
-| Frontend        | Next.js (App Router) + Tailwind — deployed to Vercel |
+See [`docs/architecture.md`](docs/architecture.md) for domain and data details.
 
 ## Prerequisites
 
-- **Node.js ≥ 20**
-- **Docker** (for local PostgreSQL/PostGIS, Redis, MinIO)
-- npm (repo uses npm workspaces)
+- Node.js 22 or newer and npm.
+- Optional Docker Desktop for local PostgreSQL/PostGIS and Redis.
+- Vercel projects for `rentrust-web` and `rentrust-api`, with the Supabase and
+  Upstash integrations connected to the API project.
+- Cloudflare R2 credentials for private uploads and downloads.
 
-## Installation
+## Install and run locally
 
-```bash
-git clone <repo-url> rentrust
-cd rentrust
-npm install
-cp .env.example .env   # adjust as needed
-```
-
-## Environment variables
-
-All variables are documented in [`.env.example`](.env.example). Key ones:
-
-| Variable                                   | Purpose                                  |
-| ------------------------------------------ | ---------------------------------------- |
-| `DATABASE_URL`                             | PostgreSQL/PostGIS connection string     |
-| `REDIS_URL`                                | Redis connection (cache + BullMQ)        |
-| `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | JWT signing secrets (required in prod)   |
-| `STORAGE_DRIVER`                           | `mock` (dev) or `s3` (R2/S3/MinIO)       |
-| `STORAGE_ENDPOINT` / `STORAGE_BUCKET` …    | Object storage (see R2 block in example) |
-| `EMAIL_DRIVER`                             | `console` (dev) or `smtp`                |
-| `IMAGE_COMPRESSION_*`                      | Image downscale/quality settings         |
-| `TRUST_SCORE_MIN_REVIEWS`                  | Sample size for full score confidence    |
-
-Secrets are **never** committed. In production, strong secrets are **required**
-(the app refuses to boot with dev defaults when `NODE_ENV=production`).
-
-## Database, migrations, seed
-
-Start infra and apply the schema:
-
-```bash
-docker compose up -d postgres redis        # (+ minio if using s3 locally)
-npm run db:generate                        # generate Prisma client
-npm run db:migrate:deploy                  # apply migrations
-npm run db:seed                            # OPTIONAL: fictional dev data
-```
-
-> The seed inserts **clearly fictional** development data (20 properties, 10
-> landlords, 5 managers, 100 reviews, 5 localities) and computes trust scores.
-> Never run it against production.
-
-## Running locally
-
-```bash
-# Terminal 1 — infra
-docker compose up -d postgres redis
-
-# Terminal 2 — API (http://localhost:4000, docs at /api/docs)
+```powershell
+npm ci
+if (-not (Test-Path .env.local)) { Copy-Item .env.example .env.local }
+npm run db:generate
+npm run db:migrate:deploy:local
 npm run api
 ```
 
-The trust-score **worker** runs in-process in development. In production it runs
-as a separate process (`node dist/worker.js`).
+In a second terminal:
 
-## Testing
+```powershell
+if (-not (Test-Path apps/web/.env.local)) { Copy-Item apps/web/.env.example apps/web/.env.local }
+npm run web
+```
+
+The API runs at `http://localhost:4000`; Swagger is at
+`http://localhost:4000/api/docs`. The web app runs at `http://localhost:3000`.
+Start the database and Redis before the migration/API commands. For local
+infrastructure, `docker compose up -d postgres redis` is optional if you have
+configured Supabase and Upstash in `.env.local`.
+
+## Environment configuration
+
+Copy `.env.example` to `.env.local` for local API development. Never commit
+secret values. Vercel supplies the corresponding values through project
+environment variables.
+
+The API uses:
+
+| Variable | Purpose |
+| --- | --- |
+| `POSTGRES_PRISMA_URL` or `DATABASE_URL` | Supabase pooled PostgreSQL URL |
+| `POSTGRES_URL_NON_POOLING` | Direct URL for migrations and administrative database operations |
+| `REDIS_URL` | Upstash Redis connection |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Production token signing secrets |
+| `APP_URL`, `CORS_ORIGINS` | Public web origin and allowed browser origins |
+| `STORAGE_DRIVER=s3` | Enable Cloudflare R2 file storage |
+| `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | R2 S3-compatible connection details |
+| `EMAIL_DRIVER=smtp` and `SMTP_*` | Email verification, password reset, and notifications |
+| `TRUST_SCORE_QUEUE_DRIVER=inline` | Recalculate scores within Vercel requests |
+
+For production, configure R2 with a private bucket and short-lived presigned
+URLs. Configure bucket CORS for the deployed web origin and the API methods
+used for browser uploads. Do not expose R2 access keys to the frontend.
+Cloudflare R2's free allowance can be exceeded and billed; it does not provide
+a documented hard zero-charge cap. Keep document uploads and deployment on hold
+while a hard zero-charge limit is required.
+
+The local `.env.local` already contains `EMAIL_DRIVER`, `EMAIL_FROM`,
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, and `SMTP_PASSWORD`. Fill
+the blank SMTP values there; the sender address key is `EMAIL_FROM`.
+
+## Database
+
+Generate Prisma Client and apply migrations with the direct Supabase URL from
+`POSTGRES_URL_NON_POOLING` in `.env.local` (or `DATABASE_URL` for local Postgres):
+
+```powershell
+npm run db:generate
+npm run db:migrate:status:local
+npm run db:migrate:deploy:local
+```
+
+The local migration commands reject a direct URL that points to a different
+Supabase project than `POSTGRES_PRISMA_URL`. The API uses the pooled URL for
+requests. Apply migrations before starting the API on a new database.
+
+The development seed creates fictional data. Never run it against a production
+database.
+
+## Vercel deployment
+
+Use two Vercel projects:
+
+1. `rentrust-web` with root directory `apps/web`.
+2. `rentrust-api` with root directory `apps/api`, Node.js 22, and the API
+   project's Supabase and Upstash integrations.
+
+The NestJS API entrypoint is `apps/api/src/app.ts`. Set
+`NEXT_PUBLIC_API_BASE_URL` in the web project to the API deployment URL followed
+by `/api/v1`. Set the API's `APP_URL` and `CORS_ORIGINS` to the exact web
+origin. Configure the Supabase database, Redis, JWT, email, and R2 variables in
+the API project before deploying a preview. Apply migrations before enabling
+traffic. Keep Preview and Production secrets separate.
+
+Vercel Hobby is intended for personal, non-commercial use. Supabase, Upstash,
+and R2 have their own quotas and usage limits; review those limits before
+launch.
+
+## Checks
 
 ```bash
-npm run test                 # unit tests (all workspaces)
-# e2e needs infra + env:
-cd apps/api
-DATABASE_URL=postgresql://rentrust:rentrust@localhost:5432/rentrust?schema=public \
-REDIS_URL=redis://localhost:6379 \
-JWT_ACCESS_SECRET=test-access JWT_REFRESH_SECRET=test-refresh NODE_ENV=test \
-npm run test:e2e
+npm run lint
+npm run typecheck
+npm run test
+npm run build
 ```
 
-Current coverage: **36 unit + 65 e2e tests** across auth, authorization, search,
-properties, reviews, verification, moderation, review anonymity, owner
-responses, claims, trust score, geospatial queries, and pagination.
+Database-backed end-to-end tests require PostgreSQL/PostGIS, Redis, and the
+environment variables described in `.env.example`.
 
-## API documentation
+## Repository layout
 
-With the API running, open **`http://localhost:4000/api/docs`** for interactive
-Swagger/OpenAPI docs generated from the DTOs and decorators. All endpoints are
-versioned under `/api/v1`.
-
-Every response uses a consistent envelope:
-
-```jsonc
-// success
-{ "success": true, "data": { /* ... */ }, "meta": { "requestId": "…" } }
-// error
-{ "success": false, "error": { "code": "PROPERTY_NOT_FOUND", "message": "…" } }
+```text
+apps/api/   NestJS API, Prisma schema/migrations, and domain modules
+apps/web/   Next.js frontend
+docs/       Architecture, ADRs, business model, and access model
 ```
-
-## Docker
-
-```bash
-# Infra only (recommended for local dev)
-docker compose up -d
-
-# Full stack (infra + API + worker) via the "app" profile
-docker compose --profile app up -d --build
-```
-
-The API image is multi-stage and runs as a non-root user. The **same image**
-runs the worker with `command: ["node", "dist/worker.js"]`.
-
-## Deployment
-
-- **Frontend → Vercel** (`apps/web`).
-- **Backend → container host** (Render / Railway / Fly / ECS): run the API and a
-  separate **worker** process from the same image.
-- **Managed services**: PostgreSQL + PostGIS (e.g. Neon/Supabase/RDS), Redis
-  (e.g. Upstash), object storage (**Cloudflare R2**).
-- CI (GitHub Actions) lints, typechecks, tests, builds, and produces a
-  deploy-ready Docker image on `main`. It does **not** auto-deploy.
-
-## Project structure
-
-```
-apps/api/src/
-  common/        guards, interceptors, filters, decorators, errors, pagination
-  config/        typed configuration
-  database/      Prisma + Redis services
-  events/        in-process domain event bus
-  queue/         BullMQ queues
-  auth/          authentication + RBAC
-  users/ residents/
-  locations/     countries/states/cities/localities (+ locality intelligence)
-  properties/    canonical properties, aliases, PostGIS search
-  reviews/       structured reviews + lifecycle
-  verification/  residency verification + documents
-  trust-score/   scoring engine + worker + reference data
-  search/        unified search (provider abstraction)
-  moderation/    reporting, queue, decisions, appeals
-  claims/        property claims + owner responses
-  engagement/    saved properties + comparison
-  analytics/     product analytics abstraction
-  notifications/ in-app + email + mailer abstraction
-  files/         storage abstraction (mock / S3-R2) + image compression
-  audit/         append-only audit log
-  admin/         admin APIs + CSV import
-```
-
-## Architecture decisions
-
-See [`docs/adr`](docs/adr):
-
-- ADR-001 Modular monolith
-- ADR-002 NestJS + Fastify
-- ADR-003 PostgreSQL + PostGIS
-- ADR-004 Prisma
-- ADR-005 Redis + BullMQ
-- ADR-006 REST API
-- ADR-007 Anonymous public reviews
-- ADR-008 Verification model
-- ADR-009 Trust score calculation

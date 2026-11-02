@@ -11,6 +11,7 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  ValidateBy,
 } from 'class-validator';
 
 export class UpdateUserRolesDto {
@@ -101,6 +102,20 @@ export class UpdateScoreWeightsDto {
     additionalProperties: { type: 'number' },
   })
   @IsObject()
+  @ValidateBy({
+    name: 'isValidScoreWeights',
+    validator: {
+      validate: (value: unknown) =>
+        !!value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        Object.values(value as Record<string, unknown>).every(
+          (weight) =>
+            typeof weight === 'number' && Number.isFinite(weight) && weight >= 0 && weight <= 1,
+        ),
+      defaultMessage: () => 'weights must contain finite numbers between 0 and 1.',
+    },
+  })
   weights!: Record<string, number>;
 
   @ApiPropertyOptional({ description: 'Activate this config immediately', default: true })

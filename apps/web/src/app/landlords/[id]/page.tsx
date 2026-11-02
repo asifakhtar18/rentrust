@@ -1,51 +1,100 @@
 import type { Metadata } from 'next';
-import { UserRound } from 'lucide-react';
-import { Badge, Card, Section } from '@/components/ui/primitives';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { Building2, MapPin } from 'lucide-react';
+import { apiFetch, ApiError } from '@/lib/api';
+import type { LandlordProfile } from '@/lib/types';
+import { Badge, Card, EmptyState, Section } from '@/components/ui/primitives';
 import { LinkButton } from '@/components/ui/button';
+import { TrustScore } from '@/components/trust-score/trust-score';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Landlord profile · RentTrust',
-  description: 'Landlord profiles aggregate verified resident experience across their properties.',
+  title: 'Landlord profile · RenTrust',
+  description: 'See property history and resident-verified feedback for a landlord.',
 };
 
-/*
- * Landlord profile — honest stub.
- *
- * There is no public landlord-profile API yet (landlords are only exposed
- * through search hits and the admin console). Rather than fabricate a name or
- * score, this page is transparent about what's coming and points residents to
- * the data that does exist: per-property trust scores.
- */
-export default function LandlordPage() {
-  return (
-    <Section className="py-16">
-      <div className="mx-auto max-w-xl text-center">
-        <span className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <UserRound className="size-7" aria-hidden />
-        </span>
-        <Badge tone="neutral" className="mt-5">
-          Coming soon
-        </Badge>
-        <h1 className="mt-4 t-page-title text-foreground">Landlord profiles are on the way</h1>
-        <p className="mx-auto mt-3 max-w-md t-body text-muted-foreground">
-          We&apos;re building a view that rolls up a landlord&apos;s track record across every property they manage —
-          using only verified resident reviews, never estimated numbers. For now, trust data lives on each property.
-        </p>
-        <div className="mt-7 flex justify-center gap-3">
-          <LinkButton href="/search" variant="primary">
-            Search properties
-          </LinkButton>
-          <LinkButton href="/" variant="secondary">
-            Back home
-          </LinkButton>
-        </div>
+async function getProfile(id: string) {
+  try {
+    const { data } = await apiFetch<LandlordProfile>(`/landlords/${encodeURIComponent(id)}`);
+    return data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
+}
 
-        <Card className="mt-10 p-6 text-left">
-          <p className="t-label text-foreground">Why we don&apos;t show a number here yet</p>
-          <p className="mt-2 t-helper">
-            A landlord score is only meaningful once enough of their properties have verified reviews. Showing an
-            incomplete figure would mislead, so we wait until the data is honest.
+export default async function LandlordPage({ params }: { params: { id: string } }) {
+  const profile = await getProfile(params.id);
+
+  return (
+    <Section className="py-10">
+      <div className="flex flex-wrap items-start justify-between gap-5">
+        <div className="min-w-0">
+          <div className="mb-3 flex items-center gap-2">
+            <Badge tone="neutral">{profile.landlord.isCompany ? 'Company' : 'Individual landlord'}</Badge>
+            <Badge tone="brand">Resident profile</Badge>
+          </div>
+          <h1 className="t-page-title text-foreground">{profile.landlord.displayName}</h1>
+          <p className="mt-2 t-body text-muted-foreground">
+            {profile.propertyCount} {profile.propertyCount === 1 ? 'active property' : 'active properties'}
+            {' · '}{profile.verifiedReviewCount} residency-verified {profile.verifiedReviewCount === 1 ? 'review' : 'reviews'}
           </p>
+        </div>
+        <LinkButton href="/search" variant="secondary">Search properties</LinkButton>
+      </div>
+
+      <div className="mt-7 grid gap-5 lg:grid-cols-[1fr_1.5fr]">
+        <Card className="p-6" elevated>
+          {profile.hasEnoughData && profile.averageOverall !== null ? (
+            <TrustScore score={profile.averageOverall} sampleSize={profile.verifiedReviewCount} />
+          ) : (
+            <div>
+              <p className="t-title3 text-foreground">Not enough verified reviews for a score</p>
+              <p className="mt-2 t-callout text-muted-foreground">
+                RenTrust shows a landlord score after at least {profile.minimumReviewsForScore} published, residency-verified reviews.
+                The count below includes verified reviews only.
+              </p>
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="t-title3 text-foreground">Properties linked to this landlord</h2>
+          {profile.properties.length ? (
+            <ul className="mt-4 divide-y divide-border">
+              {profile.properties.map((property) => (
+                <li key={property.id} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
+                  <div className="min-w-0">
+                    <Link href={`/properties/${property.id}`} className="flex items-center gap-2 t-label text-foreground hover:text-primary">
+                      <Building2 className="size-4 shrink-0 text-primary" aria-hidden />
+                      <span>{property.displayName}</span>
+                    </Link>
+                    {(property.localityName || property.cityName) && (
+                      <p className="mt-1 flex items-center gap-1.5 t-helper text-muted-foreground">
+                        <MapPin className="size-3.5" aria-hidden />
+                        {[property.localityName, property.cityName].filter(Boolean).join(', ')}
+                      </p>
+                    )}
+                    <p className="mt-1 t-helper text-muted-foreground">
+                      {property.verifiedReviewCount} residency-verified {property.verifiedReviewCount === 1 ? 'review' : 'reviews'}
+                    </p>
+                  </div>
+                  {property.averageOverall !== null && (
+                    <span className="rounded-md border border-border bg-background px-3 py-1.5 t-label tabular text-foreground" aria-label={`Average review score ${property.averageOverall} out of 100`}>
+                      {property.averageOverall}<span className="ml-1 t-helper text-muted-foreground">/100</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState
+              title="No active properties listed"
+              body="There are no active properties linked to this landlord yet."
+            />
+          )}
         </Card>
       </div>
     </Section>

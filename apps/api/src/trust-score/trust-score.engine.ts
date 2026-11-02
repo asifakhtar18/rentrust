@@ -5,24 +5,9 @@ import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../config/configuration';
 import { categoryScoresForReview } from '../reviews/review-scoring';
 import { REVIEW_CATEGORY_KEYS, ReviewCategoryKey } from '../reviews/review.constants';
+import { DEFAULT_SCORE_WEIGHTS } from './score-constants';
 
-/**
- * Default category weights (ADR-009). These mirror the product spec and are
- * seeded into an active ScoreConfiguration so they can change as data, not
- * code. Weights are normalised at calculation time so they need not sum to 1.
- */
-export const DEFAULT_SCORE_WEIGHTS: Record<ReviewCategoryKey, number> = {
-  management: 0.25,
-  maintenance: 0.15,
-  deposit: 0.1,
-  communication: 0.1,
-  safety: 0.1,
-  condition: 0.1,
-  rules: 0.1,
-  experience: 0.1,
-};
-
-export const DEFAULT_CONFIG_NAME = 'default-v1';
+export { DEFAULT_CONFIG_NAME, DEFAULT_SCORE_WEIGHTS } from './score-constants';
 
 export interface CategoryScoreDetail {
   score: number;

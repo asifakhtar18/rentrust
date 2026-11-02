@@ -14,6 +14,7 @@ out/
 .env
 .env.local
 .env.*.local
+.dev.vars
 *.pem
 
 # Logs
@@ -26,6 +27,7 @@ yarn-error.log*
 # Test / coverage
 coverage/
 .nyc_output/
+.jest-cache/
 
 # Prisma
 apps/api/prisma/*.db
@@ -38,3 +40,6 @@ Thumbs.db
 
 # Docker volumes (local)
 .docker-data/
+
+# Local Wrangler state from the retired Worker prototype (not source/config).
+apps/worker/.wrangler/

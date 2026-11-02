@@ -1,11 +1,10 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build for the RentTrust API (and worker — same image, different
-# entrypoint). Produces a lean production image with only runtime deps.
+# Multi-stage build for the RenTrust API. Produces a lean production image.
 
 # ---- Base -------------------------------------------------------------------
 FROM node:20-bookworm-slim AS base
 WORKDIR /app
-# OpenSSL is required by Prisma; libvips speeds up sharp image compression.
+# OpenSSL is required by Prisma.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl \
   && rm -rf /var/lib/apt/lists/*
@@ -51,6 +50,4 @@ EXPOSE 4000
 
 # Start the API. Run migrations as a release/pre-deploy step on the host:
 #   npx prisma migrate deploy   (the prisma CLI ships in node_modules/.bin)
-# Override the command to run the worker instead:
-#   command: ["node", "dist/worker.js"]
 CMD ["node", "dist/main.js"]

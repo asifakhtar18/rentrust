@@ -33,13 +33,14 @@ export function Navbar() {
           <span className="flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <ShieldCheck className="size-4" aria-hidden />
           </span>
-          <span className="t-body font-semibold tracking-tight text-foreground">RentTrust</span>
+          <span className="t-body font-semibold tracking-tight text-foreground">RenTrust</span>
         </Link>
 
         <div className="hidden items-center gap-6 md:flex">
           {link('/search', 'Search')}
           {link('/compare', 'Compare')}
           {user && link('/saved', 'Saved')}
+          {user && link('/notifications', 'Notifications')}
           {isAdmin && link('/admin', 'Console')}
         </div>
 
@@ -74,6 +75,7 @@ export function Navbar() {
                 >
                   <MenuItem href="/profile" onClick={() => setOpen(false)}>Profile</MenuItem>
                   <MenuItem href="/saved" onClick={() => setOpen(false)}>Saved properties</MenuItem>
+                  <MenuItem href="/notifications" onClick={() => setOpen(false)}>Notifications</MenuItem>
                   {isAdmin && <MenuItem href="/admin" onClick={() => setOpen(false)}>Console</MenuItem>}
                   <div className="my-1 h-px bg-border" />
                   <button

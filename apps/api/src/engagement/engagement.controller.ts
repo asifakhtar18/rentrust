@@ -1,5 +1,6 @@
 import { Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { isUUID } from 'class-validator';
 import { Public } from '../common/decorators/public.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { BadRequestAppException } from '../common/errors/app.exception';
@@ -38,13 +39,16 @@ export class EngagementController {
   @Public()
   @Get('compare')
   @ApiOperation({ summary: 'Compare 2-4 properties by trust score (ids=comma,separated)' })
-  async compare(@Query('ids') ids?: string) {
-    const list = (ids ?? '')
-      .split(',')
+  async compare(@Query('ids') ids?: string | string[]) {
+    const list = (Array.isArray(ids) ? ids : [ids ?? ''])
+      .flatMap((value) => value.split(','))
       .map((s) => s.trim())
       .filter(Boolean);
     if (list.length === 0) {
       throw new BadRequestAppException('Provide ids as a comma-separated list.');
+    }
+    if (list.some((id) => !isUUID(id))) {
+      throw new BadRequestAppException('Compare between 2 and 4 property ids.');
     }
     return { data: await this.engagement.compare(list) };
   }

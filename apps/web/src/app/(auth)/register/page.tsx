@@ -23,8 +23,8 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      await register(email, password, displayName || undefined);
-      router.push('/');
+      const verificationRequired = await register(email, password, displayName || undefined);
+      router.push(verificationRequired ? '/verify-email?sent=1' : '/');
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Please try again.');

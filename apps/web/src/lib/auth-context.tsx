@@ -17,7 +17,7 @@ import {
 } from 'react';
 
 import type { AuthUser } from './types';
-import { ApiError } from './api';
+import { ApiError, getApiBaseUrl } from './api';
 
 // ---- Types ----
 
@@ -32,7 +32,7 @@ interface AuthContextValue extends AuthState {
     email: string,
     password: string,
     displayName?: string,
-  ) => Promise<void>;
+  ) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   /** Authenticated fetch: attaches the in-memory access token and retries
@@ -69,9 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Fetch /auth/me using the current access token. */
   const fetchMe = useCallback(async (token: string): Promise<AuthUser | null> => {
     try {
-      const API =
-        process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
-      const res = await fetch(`${API}/auth/me`, {
+      const res = await fetch(`${getApiBaseUrl()}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return null;
@@ -123,9 +121,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         );
       }
       const body = await res.json();
+      if (body.verificationRequired) {
+        tokenRef.current = null;
+        setState({ user: null, loading: false });
+        return true;
+      }
       tokenRef.current = body.accessToken;
       const user = await fetchMe(body.accessToken);
       setState({ user, loading: false });
+      return false;
     },
     [fetchMe],
   );
@@ -149,9 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /** Authenticated fetch with 401-retry. */
   const request = useCallback(
     async <T,>(path: string, init?: RequestInit): Promise<T> => {
-      const API =
-        process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:4000/api/v1';
-      const url = path.startsWith('http') ? path : `${API}${path}`;
+      const url = path.startsWith('http') ? path : `${getApiBaseUrl()}${path}`;
 
       const doFetch = async (token: string | null) => {
         const headers = new Headers(init?.headers);

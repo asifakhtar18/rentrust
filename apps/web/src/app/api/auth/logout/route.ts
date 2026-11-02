@@ -4,7 +4,7 @@
 /* ------------------------------------------------------------------ */
 
 import { NextResponse } from 'next/server';
-import { backendAuth, clearRefreshCookie, readRefreshCookie } from '@/lib/bff';
+import { backendAuth, clearRefreshCookie, noStore, readRefreshCookie } from '@/lib/bff';
 
 export async function POST() {
   const refreshToken = await readRefreshCookie();
@@ -14,7 +14,7 @@ export async function POST() {
     await backendAuth('/auth/logout', { refreshToken }).catch(() => {});
   }
 
-  const res = NextResponse.json({ success: true });
+  const res = noStore(NextResponse.json({ success: true }));
   clearRefreshCookie(res);
   return res;
 }

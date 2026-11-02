@@ -1,4 +1,4 @@
-# RentTrust — Build Task Tracker
+# RenTrust — Build Task Tracker
 
 > "Know the place before you rent it."
 >
@@ -7,19 +7,9 @@
 > with a Next.js frontend. Built in phases; each phase ends green on
 > typecheck + lint + build + unit + e2e before moving on.
 
-**Progress: 14 / 15 phases complete — backend done; frontend remaining.**
+**Status:** the NestJS/Next.js feature baseline is in place. The deployment target is Vercel for both frontend and API, Supabase PostgreSQL and Upstash Redis through Vercel integrations, and Cloudflare R2 only for private object storage. Deployment is pending repository connection, production-safe environment values, R2 setup, and preview integration checks.
 
-Current test tally: **36 unit tests + 65 e2e tests (101 total)**, all passing.
-The production Docker image has been built and verified to boot and serve
-`/health`, `/ready`, and the API.
-
-Storage: Cloudflare R2 (S3-compatible) in production via the S3 driver; images
-are compressed and EXIF-stripped server-side (`sharp`, re-encoded to WebP)
-before storage. Documents (PDFs) use presigned direct-to-storage uploads.
-
-Deployment target: frontend on Vercel; backend (API + BullMQ worker) on a
-container host (Render/Railway/Fly) with managed Postgres/PostGIS, Redis, and
-S3-compatible object storage.
+The app uses Next.js and NestJS on Vercel, Supabase PostgreSQL/PostGIS, Upstash Redis, and Cloudflare R2's S3-compatible API. Vercel Functions use inline trust-score recalculation and Redis-backed shared rate limiting; BullMQ remains for long-running Node deployments.
 
 ---
 
@@ -142,21 +132,10 @@ S3-compatible object storage.
 
 ---
 
-## Remaining
+## Current remaining work
 
-### [ ] Frontend — Next.js app (Apple-inspired design system)  *(next)*
-- Customer pages: home, search, property, landlord, locality, compare, saved,
-  multi-step review flow, profile.
-- Admin pages: properties, reviews, moderation, verifications, claims, users.
-- Modern, minimal, trustworthy, mobile-first; secure auth via a thin BFF
-  cookie layer for the rotating refresh token.
-
----
-
-## Known gaps to close (tracked)
-
-- SMTP mailer is implemented as a clean adapter but exercised with the console
-  driver in dev and tests; wire a real transport (nodemailer/SES/Resend) before
-  production email.
-- S3/R2 storage and image compression run against the mock storage driver in
-  dev and tests; point `STORAGE_DRIVER=s3` at a real R2 bucket for production.
+- Connect the GitHub repository to `rentrust-web` and `rentrust-api` in Vercel. This checkout has `origin` configured, but neither Vercel project has a deployment.
+- The API Vercel project already has Supabase pooled/direct database variables and Upstash `REDIS_URL` attached. Four migrations were applied to that Supabase database, and local `/health` and `/ready` returned 200 on 2026-11-03.
+- Resolve the hard zero-charge storage requirement before activating Cloudflare R2. R2's free quota allows billable overages, and Cloudflare documents budget alerts rather than a hard spending cap. The Cloudflare API currently returns error 10042 (“Please enable R2 through the Cloudflare Dashboard”). If R2 is accepted, create a private bucket and S3 credentials, then configure API environment values and bucket CORS for the web origin.
+- Configure production JWT secrets, SMTP delivery, app URL, API CORS origins, and frontend API URL. Rotate the database password previously exposed in local logs before using it for a deployment.
+- Verify auth, email, file access, rate limiting, score updates, and frontend flows on a Vercel preview before production. The web project currently has no environment variables.

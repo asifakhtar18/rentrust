@@ -1,18 +1,18 @@
-# RentTrust UI/UX Design Skill
+# RenTrust UI/UX Design Skill
 
 ## Role
 
-You are the Lead Product Designer + Senior Frontend Engineer for RentTrust.
+You are the Lead Product Designer + Senior Frontend Engineer for RenTrust.
 
-Your responsibility is to design and implement a premium, modern, highly usable interface for RentTrust.
+Your responsibility is to design and implement a premium, modern, highly usable interface for RenTrust.
 
-RentTrust is an Indian rental-property intelligence platform.
+RenTrust is an Indian rental-property intelligence platform.
 
 Core promise:
 
 > Know the place before you rent.
 
-Renters use RentTrust to:
+Renters use RenTrust to:
 
 - Discover apartments, PGs, hostels and co-living properties
 - Search properties by location, budget and preferences
@@ -25,7 +25,7 @@ Renters use RentTrust to:
 - Save properties
 - Make better rental decisions
 
-Property owners/managers use RentTrust to:
+Property owners/managers use RenTrust to:
 
 - Claim properties
 - Respond to resident reviews
@@ -38,7 +38,7 @@ Property owners/managers use RentTrust to:
 
 # 1. DESIGN NORTH STAR
 
-RentTrust should feel:
+RenTrust should feel:
 
 - Premium
 - Trustworthy
@@ -83,15 +83,15 @@ Extract the underlying design principles instead.
 
 ---
 
-# 2. RENTTRUST VISUAL IDENTITY
+# 2. RENTRUST VISUAL IDENTITY
 
 ## Critical rule
 
-RentTrust is NOT a Linear clone.
+RenTrust is NOT a Linear clone.
 
-RentTrust is NOT a Vercel clone.
+RenTrust is NOT a Vercel clone.
 
-RentTrust is NOT a dark-mode-first developer tool.
+RenTrust is NOT a dark-mode-first developer tool.
 
 The visual identity should be:
 
@@ -113,7 +113,7 @@ Vercel-level visual restraint
 +
 Notion-level information organization
 
-But create an original RentTrust identity.
+But create an original RenTrust identity.
 
 ---
 
@@ -160,7 +160,7 @@ However:
 
 Dark mode is an alternative theme.
 
-It is NOT the primary RentTrust identity.
+It is NOT the primary RenTrust identity.
 
 Dark mode should feel:
 
@@ -477,7 +477,7 @@ Then progressively reveal:
 
 # 13. TRUST IS THE CORE UX PRINCIPLE
 
-RentTrust deals with a high-stakes decision:
+RenTrust deals with a high-stakes decision:
 
 Where someone lives.
 
@@ -602,7 +602,7 @@ Use:
 
 # 17. EDITORIAL DESIGN
 
-RentTrust should have an editorial quality.
+RenTrust should have an editorial quality.
 
 Use:
 
@@ -624,7 +624,7 @@ Avoid:
 
 # 18. SEARCH EXPERIENCE
 
-Search is one of the most important RentTrust experiences.
+Search is one of the most important RenTrust experiences.
 
 Search should be more important than the map.
 
@@ -804,7 +804,7 @@ The score should be prominent but not gimmicky.
 
 # 23. TRUST SCORE
 
-Trust Score is a core RentTrust feature.
+Trust Score is a core RenTrust feature.
 
 Prefer a simple presentation.
 
@@ -1362,9 +1362,9 @@ Framer Motion only when necessary
 
 Do not blindly use every shadcn component.
 
-Customize components to match RentTrust.
+Customize components to match RenTrust.
 
-RentTrust should NOT look like default shadcn/ui.
+RenTrust should NOT look like default shadcn/ui.
 
 ---
 
@@ -1459,7 +1459,7 @@ Does mobile feel intentionally designed?
 
 ### Originality
 
-Does this feel like RentTrust?
+Does this feel like RenTrust?
 
 Not:
 
@@ -1505,7 +1505,7 @@ Never create:
 
 ❌ Emoji UI icons
 
-❌ Giant "Welcome to RentTrust" dashboard
+❌ Giant "Welcome to RenTrust" dashboard
 
 ❌ Every section inside a card
 
@@ -1542,7 +1542,7 @@ generic SaaS dashboard screenshot
 
 # 50. BRAND PERSONALITY
 
-RentTrust should feel:
+RenTrust should feel:
 
 Confident
 but not arrogant.
@@ -1586,7 +1586,7 @@ Do not add decoration.
 
 # 52. FINAL RULE
 
-The RentTrust design language is:
+The RenTrust design language is:
 
 LIGHT-FIRST
 +
@@ -1616,7 +1616,7 @@ Collect UI's visual inspiration
 
 But create:
 
-## RENTTRUST
+## RENTRUST
 
 an original product identity.
 

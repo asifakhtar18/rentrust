@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { User, UserStatus } from '@prisma/client';
+import { Prisma, User, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { UsersService } from '../../users/users.service';
 import { AppConfig } from '../../config/configuration';
@@ -97,20 +97,38 @@ export class AuthService {
    */
   async refresh(refreshToken: string, ctx: SessionContext): Promise<AuthTokensDto> {
     const hash = this.tokens.hashToken(refreshToken);
-    const session = await this.prisma.session.findFirst({
-      where: { refreshTokenHash: hash },
-      include: { user: true },
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      // Serialize concurrent uses of the same refresh token. A second caller
+      // waits here, then observes the rotated row and triggers replay revocation.
+      await tx.$queryRaw`SELECT id FROM sessions WHERE refresh_token_hash = ${hash} FOR UPDATE`;
+      const session = await tx.session.findFirst({
+        where: { refreshTokenHash: hash },
+        include: { user: true },
+      });
+
+      if (!session) return { kind: 'invalid' as const };
+
+      if (session.revokedAt || session.replacedById) {
+        await tx.session.updateMany({
+          where: { userId: session.userId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+        return { kind: 'reused' as const, userId: session.userId, sessionId: session.id };
+      }
+
+      if (session.expiresAt.getTime() < Date.now()) return { kind: 'expired' as const };
+      if (session.user.status !== UserStatus.ACTIVE) return { kind: 'inactive' as const };
+
+      const tokens = await this.issueTokens(session.user, ctx, session.id, tx);
+      return { kind: 'rotated' as const, tokens };
     });
 
-    if (!session) {
+    if (outcome.kind === 'invalid') {
       throw new UnauthorizedAppException('Invalid refresh token.', ErrorCode.INVALID_TOKEN);
     }
-
-    // Reuse detection: a revoked/replaced token being presented again.
-    if (session.revokedAt || session.replacedById) {
-      await this.revokeUserSessions(session.userId);
+    if (outcome.kind === 'reused') {
       this.logger.warn(
-        { userId: session.userId, sessionId: session.id },
+        { userId: outcome.userId, sessionId: outcome.sessionId },
         'Refresh token reuse detected; revoked all sessions',
       );
       throw new UnauthorizedAppException(
@@ -118,17 +136,13 @@ export class AuthService {
         ErrorCode.INVALID_TOKEN,
       );
     }
-
-    if (session.expiresAt.getTime() < Date.now()) {
+    if (outcome.kind === 'expired') {
       throw new UnauthorizedAppException('Refresh token expired.', ErrorCode.TOKEN_EXPIRED);
     }
-    if (session.user.status !== UserStatus.ACTIVE) {
+    if (outcome.kind === 'inactive') {
       throw new ForbiddenAppException('This account is not active.', ErrorCode.FORBIDDEN);
     }
-
-    // Issue a new session and point the old one at it (rotation chain).
-    const tokens = await this.issueTokens(session.user, ctx, session.id);
-    return tokens;
+    return outcome.tokens;
   }
 
   async logout(refreshToken: string): Promise<void> {
@@ -162,10 +176,18 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 60 * 60 * 1000),
       },
     });
+    const link = this.buildAppLink('/reset-password', token);
     await this.mailer.send({
       to: user.email,
-      subject: 'Reset your RentTrust password',
-      text: `Use this token to reset your password: ${token}\nThis token expires in 1 hour. If you did not request this, ignore this email.`,
+      subject: 'Reset your RenTrust password',
+      text:
+        `We received a request to reset your RenTrust password.\n\n` +
+        `Choose a new password here:\n${link}\n\n` +
+        `This link expires in 1 hour. If you didn't request this, you can safely ignore this email.`,
+      html:
+        `<p>We received a request to reset your RenTrust password.</p>` +
+        `<p><a href="${link}">Choose a new password</a></p>` +
+        `<p>This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>`,
     });
   }
 
@@ -183,6 +205,7 @@ export class AuthService {
     user: User,
     ctx: SessionContext,
     replaceSessionId?: string,
+    transaction?: Prisma.TransactionClient,
   ): Promise<AuthTokensDto> {
     const accessToken = await this.tokens.signAccessToken({
       sub: user.id,
@@ -194,7 +217,7 @@ export class AuthService {
     const { token: refreshToken, hash } = this.tokens.generateRefreshToken();
     const expiresAt = new Date(Date.now() + this.tokens.refreshTtlMs());
 
-    await this.prisma.$transaction(async (tx) => {
+    const persist = async (tx: Prisma.TransactionClient) => {
       const created = await tx.session.create({
         data: {
           userId: user.id,
@@ -210,7 +233,9 @@ export class AuthService {
           data: { revokedAt: new Date(), replacedById: created.id },
         });
       }
-    });
+    };
+    if (transaction) await persist(transaction);
+    else await this.prisma.$transaction(persist);
 
     const accessTtlMs = parseDurationMs(this.config.get('jwt', { infer: true }).accessTtl);
     return { accessToken, refreshToken, expiresIn: Math.floor(accessTtlMs / 1000) };
@@ -233,11 +258,25 @@ export class AuthService {
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
+    const link = this.buildAppLink('/verify-email', token);
     await this.mailer.send({
       to: user.email,
-      subject: 'Verify your RentTrust email',
-      text: `Welcome to RentTrust. Verify your email with this token: ${token}\nThis token expires in 24 hours.`,
+      subject: 'Verify your RenTrust email',
+      text:
+        `Welcome to RenTrust.\n\n` +
+        `Confirm your email by opening this link:\n${link}\n\n` +
+        `This link expires in 24 hours. If you didn't create an account, you can ignore this email.`,
+      html:
+        `<p>Welcome to RenTrust.</p>` +
+        `<p><a href="${link}">Confirm your email address</a></p>` +
+        `<p>This link expires in 24 hours. If you didn't create an account, you can ignore this email.</p>`,
     });
+  }
+
+  /** Builds an absolute web-app link carrying a one-time token as a query param. */
+  private buildAppLink(path: string, token: string): string {
+    const appUrl = this.config.get('appUrl', { infer: true });
+    return `${appUrl}${path}?token=${encodeURIComponent(token)}`;
   }
 
   /** Validates and single-use-consumes an email-verify / reset token. */

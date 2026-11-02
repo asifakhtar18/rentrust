@@ -1,7 +1,7 @@
-# RentTrust — Architecture
+# RenTrust — Architecture
 
 This document describes the system, module, and data architecture of the
-RentTrust backend, plus the key lifecycles, security posture, and scaling and
+RenTrust backend, plus the key lifecycles, security posture, and scaling and
 failure-handling considerations.
 
 ---
@@ -9,29 +9,23 @@ failure-handling considerations.
 ## 1. System architecture
 
 ```
-                 ┌───────────────────────────┐
-   Browser  ───► │  Next.js frontend (Vercel) │
-                 └─────────────┬─────────────┘
-                               │ HTTPS (REST, /api/v1)
-                 ┌─────────────▼─────────────┐        ┌──────────────┐
-                 │   NestJS API (Fastify)    │  jobs  │  BullMQ       │
-                 │   modular monolith        ├───────►│  worker       │
-                 └───┬──────────┬────────┬───┘        └──────┬───────┘
-                     │          │        │                   │
-          ┌──────────▼──┐  ┌────▼────┐  ┌▼────────────┐  ┌───▼────────┐
-          │ PostgreSQL  │  │  Redis  │  │ Object store │  │  (same DB) │
-          │ + PostGIS   │  │ (cache, │  │  R2 / S3     │  └────────────┘
-          └─────────────┘  │  queues)│  └──────────────┘
-                           └─────────┘
+   Browser ──► Next.js frontend (Vercel)
+                    │ HTTPS REST
+                    ▼
+             NestJS API (Vercel Functions)
+              │          │             │
+              ▼          ▼             ▼
+       Supabase       Upstash       Cloudflare R2
+       Postgres       Redis         (private files)
 ```
 
 - The **API** handles all synchronous request/response work.
-- Heavy or deferrable work (trust-score recalculation, future email/indexing)
-  is enqueued to **BullMQ** and processed by a **worker** running the same
-  application wiring in a separate process.
+- Vercel Functions recalculate trust scores inline and use Redis-backed shared
+  rate-limit counters. BullMQ is retained only for deployments with a
+  persistent Node worker process.
 - **PostgreSQL + PostGIS** is the system of record and also powers search and
   geospatial queries.
-- **Redis** backs caching, rate limiting, and queues.
+- **Upstash Redis** backs shared rate limiting and Redis-based features.
 - **Object storage** (Cloudflare R2 in production) holds private verification
   and claim documents; the API never serves file bytes, only signed URLs.
 
@@ -45,9 +39,9 @@ Prisma is the persistence layer. Cross-cutting infra is provided globally.
 | --------------- | ------------------------------------------------------------ |
 | `config`        | Typed, env-driven configuration (single source of truth)     |
 | `common`        | Guards, interceptors, filter, decorators, errors, pagination |
-| `database`      | Prisma + Redis clients (global)                              |
+| `database`      | Prisma + Redis clients and shared throttler storage (global)  |
 | `events`        | In-process domain event bus (global)                         |
-| `queue`         | BullMQ queues + connection (global)                          |
+| `queue`         | Optional BullMQ queues for long-running Node hosts            |
 | `auth`          | Email/password auth, JWT, refresh rotation, RBAC             |
 | `users`         | User persistence, resident profiles, data deletion           |
 | `locations`     | Geography + locality intelligence                            |
@@ -61,7 +55,7 @@ Prisma is the persistence layer. Cross-cutting infra is provided globally.
 | `engagement`    | Saved properties + comparison                                |
 | `analytics`     | Product analytics abstraction                                |
 | `notifications` | In-app + email, mailer abstraction                           |
-| `files`         | Storage abstraction + image compression                      |
+| `files`         | Private R2 storage abstraction and signed URLs                |
 | `audit`         | Append-only audit log (global)                               |
 | `admin`         | Admin APIs + CSV import                                      |
 
@@ -132,8 +126,8 @@ UNDER_REVIEW is entered on report or appeal.
 ## 7. Verification lifecycle
 
 ```
-Client requests upload URL ─► uploads to object storage (or compressed image
-proxied via API) ─► creates VerificationRequest (PENDING) with document keys
+Client processes images and requests upload URL ─► uploads to R2
+─► creates VerificationRequest (PENDING) with document keys
 ─► moderator reviews (signed download) ─► VERIFIED | REJECTED | EXPIRED
 ```
 
@@ -145,8 +139,8 @@ proxied via API) ─► creates VerificationRequest (PENDING) with document keys
 ## 8. Trust score lifecycle
 
 ```
-review published/removed/verified ─► DomainEvent ─► enqueue (BullMQ)
-   ─► worker: TrustScoreEngine.recalculate(propertyId) ─► upsert PropertyScore
+review published/removed/verified ─► DomainEvent ─► inline recalculation on Vercel
+   ─► TrustScoreEngine.recalculate(propertyId) ─► upsert PropertyScore
    ─► emit TRUST_SCORE_UPDATED
 ```
 
@@ -155,8 +149,8 @@ review published/removed/verified ─► DomainEvent ─► enqueue (BullMQ)
   (changeable without a deploy).
 - **Confidence** scales with sample size (`1 − e^(−n/k)`, `k = threshold/3`) so
   tiny samples are never presented as authoritative.
-- Recalculation is **idempotent** and runs **asynchronously** — submitting or
-  publishing a review never blocks on scoring.
+- Recalculation is **idempotent**. It runs within the Vercel request lifecycle;
+  persistent Node deployments may use BullMQ for asynchronous processing.
 
 ## 9. Search architecture
 
@@ -167,20 +161,23 @@ review published/removed/verified ─► DomainEvent ─► enqueue (BullMQ)
 - Swapping to Elasticsearch/OpenSearch later is a provider change, not a
   caller change.
 
-## 10. Queue architecture
+## 10. Serverless execution
 
-- BullMQ on a dedicated Redis connection. Jobs are **idempotent**, retried with
-  exponential backoff (5 attempts), and cleaned up on completion/failure.
-- Trust-score jobs are deduplicated per property via a stable `jobId`.
-- The worker runs in-process in development and as a separate process in
-  production.
+- Vercel Functions do not host persistent BullMQ consumers. Trust-score updates
+  run inline in this mode; do not configure a queue driver requiring a
+  background process on Vercel.
+- The API's global rate limiter stores counters in Upstash Redis using one
+  atomic Lua operation so limits are shared across function instances.
+- For a persistent Node deployment, BullMQ remains available with retries and
+  stable job IDs for idempotent score recalculation.
 
 ## 11. Security
 
 - Helmet security headers, configurable CORS, global rate limiting.
 - Global validation (`whitelist` + `forbidNonWhitelisted` + transform);
   parameterised queries (Prisma + bound raw SQL) prevent SQL injection.
-- File upload MIME + size validation; images re-encoded and EXIF-stripped.
+- File upload MIME + size validation; the web app re-encodes images and strips
+  EXIF before direct R2 upload.
 - Secrets never logged (pino redaction); audit log never stores secrets,
   tokens, passwords, or document contents.
 - Client-supplied `userId`, `role`, ownership, and verification status are
@@ -189,7 +186,8 @@ review published/removed/verified ─► DomainEvent ─► enqueue (BullMQ)
 ## 12. Scaling
 
 - The API is stateless → scale horizontally behind a load balancer.
-- Workers scale independently of the API.
+- Vercel scales API functions per request; long-running BullMQ workers are only
+  used on a host that supports persistent processes.
 - Reads dominate; property pages and scores are cacheable (denormalised
   `PropertyScore`); Redis is used selectively, not as a blanket cache.
 - Geospatial and search work is pushed into indexed SQL, never into app memory.
@@ -202,6 +200,6 @@ review published/removed/verified ─► DomainEvent ─► enqueue (BullMQ)
   (`/health`) does not depend on downstream systems.
 - Analytics and audit writes are best-effort and never break the primary
   operation.
-- Queue retries with backoff and bounded attempts; idempotent jobs make retries
-  safe. Dead-letter handling is a natural extension of the bounded-attempts
-  policy.
+- Redis, database, and object-storage failures are surfaced by readiness and
+  request error handling; configure provider-side alerting and backup policies
+  before a public launch.

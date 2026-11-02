@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /**
- * Development seed data for RentTrust.
+ * Development seed data for RenTrust.
  *
  * ⚠️  ALL DATA HERE IS FICTIONAL and for local development only. Property
  * names, landlords, and reviews are invented. Do NOT run this against a
@@ -22,8 +22,8 @@ import {
   TriState,
   YesNoNa,
 } from '@prisma/client';
-import * as argon2 from 'argon2';
 import { randomUUID } from 'crypto';
+import { PasswordService } from '../src/auth/services/password.service';
 import { categoryScoresForReview } from '../src/reviews/review-scoring';
 import { REVIEW_CATEGORY_KEYS } from '../src/reviews/review.constants';
 import { DEFAULT_SCORE_WEIGHTS } from '../src/trust-score/trust-score.engine';
@@ -152,7 +152,7 @@ async function computeScores(propertyIds: string[]): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  console.log('Seeding RentTrust development data (FICTIONAL)...');
+  console.log('Seeding RenTrust development data (FICTIONAL)...');
   await clearSeed();
 
   // Geography
@@ -258,7 +258,7 @@ async function main(): Promise<void> {
   }
 
   // Reviewers (shared pool) + 100 published reviews
-  const passwordHash = await argon2.hash('Str0ngPassphrase1');
+  const passwordHash = await new PasswordService().hash('Str0ngPassphrase1');
   const reviewers = [];
   for (let i = 0; i < 40; i++) {
     reviewers.push(
