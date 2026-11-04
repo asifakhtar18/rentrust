@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { apiFetch, ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Field, Input } from '@/components/ui/primitives';
+import { GoogleMapsLinkField } from '@/components/locations/google-maps-link-field';
 import { AdminHeader, Panel, TableEmpty, TableLoading, Td, Th } from '../admin-ui';
 
 interface Country { id: string; name: string; iso2: string }
@@ -18,6 +19,8 @@ interface City {
   slug: string;
   latitude: number | null;
   longitude: number | null;
+  state?: { name: string };
+  country?: { name: string };
 }
 interface Locality {
   id: string;
@@ -57,6 +60,7 @@ export default function AdminLocationsPage() {
   const [localityDescription, setLocalityDescription] = useState('');
   const [localityLatitude, setLocalityLatitude] = useState('');
   const [localityLongitude, setLocalityLongitude] = useState('');
+  const [localityMapsUrl, setLocalityMapsUrl] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -152,6 +156,7 @@ export default function AdminLocationsPage() {
       setLocalityDescription('');
       setLocalityLatitude('');
       setLocalityLongitude('');
+      setLocalityMapsUrl('');
       setNotice('Locality added.');
       await load();
     } catch (cause) {
@@ -202,11 +207,12 @@ export default function AdminLocationsPage() {
           <form onSubmit={(event) => void createLocality(event)} className="space-y-4">
             <Field label="City" htmlFor="locality-city">
               <select id="locality-city" value={localityCityId} onChange={(event) => setLocalityCityId(event.target.value)} required disabled={!cities.length} className="h-11 w-full rounded-md border border-input bg-card px-3.5 t-body text-foreground disabled:opacity-60">
-                {cities.map((city) => <option key={city.id} value={city.id}>{city.name}</option>)}
+                {cities.map((city) => <option key={city.id} value={city.id}>{city.name}{city.state ? ` · ${city.state.name}` : ''}</option>)}
               </select>
             </Field>
             <Field label="Locality name" htmlFor="locality-name"><Input id="locality-name" value={localityName} onChange={(event) => setLocalityName(event.target.value)} minLength={2} maxLength={120} required placeholder="e.g. Indiranagar" /></Field>
             <Field label="Description (optional)" htmlFor="locality-description"><Input id="locality-description" value={localityDescription} onChange={(event) => setLocalityDescription(event.target.value)} maxLength={2000} placeholder="Short orientation for residents" /></Field>
+            <GoogleMapsLinkField value={localityMapsUrl} onChange={setLocalityMapsUrl} onParsed={(details) => { setLocalityLatitude(String(details.latitude)); setLocalityLongitude(String(details.longitude)); if (details.placeName && !localityName) setLocalityName(details.placeName); }} />
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Latitude (optional)" htmlFor="locality-latitude"><Input id="locality-latitude" type="number" min={-90} max={90} step="any" value={localityLatitude} onChange={(event) => setLocalityLatitude(event.target.value)} /></Field>
               <Field label="Longitude (optional)" htmlFor="locality-longitude"><Input id="locality-longitude" type="number" min={-180} max={180} step="any" value={localityLongitude} onChange={(event) => setLocalityLongitude(event.target.value)} /></Field>

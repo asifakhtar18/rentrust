@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Bell, Check, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Card, EmptyState, Section } from '@/components/ui/primitives';
 import { useAuth } from '@/lib/auth-context';
 import type { NotificationItem } from '@/lib/types';
@@ -110,6 +111,16 @@ export default function NotificationsPage() {
                     <time className="t-helper" dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
                   </div>
                   <p className="mt-1 t-body text-muted-foreground">{item.body}</p>
+                  {typeof item.data?.propertyId === 'string' && typeof item.data?.propertyName === 'string' && (
+                    <Link href={`/properties/${encodeURIComponent(item.data.propertyId)}`} className="mt-2 inline-flex min-h-9 items-center t-label text-primary hover:underline">
+                      {item.data.propertyName}
+                    </Link>
+                  )}
+                  {typeof item.data?.localityId === 'string' && typeof item.data?.localityName === 'string' && (
+                    <Link href={`/localities/${encodeURIComponent(item.data.localityId)}`} className="mt-2 inline-flex min-h-9 items-center t-label text-primary hover:underline">
+                      {item.data.localityName}
+                    </Link>
+                  )}
                 </div>
                 {!item.readAt && <Button variant="ghost" size="sm" disabled={Boolean(updating)} loading={updating === item.id} onClick={() => void markRead(item.id)} aria-label={`Mark ${item.title} as read`}>
                   <Check className="size-4" aria-hidden /><span className="hidden sm:inline">Mark read</span>

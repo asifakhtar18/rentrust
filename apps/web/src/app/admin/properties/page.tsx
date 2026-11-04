@@ -1,193 +1,293 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CheckCircle2, AlertCircle, UploadCloud } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, Building2, ChevronDown, Plus, Search, UploadCloud } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch } from '@/lib/api';
-import type { Locality } from '@/lib/types';
-import { Badge, Field } from '@/components/ui/primitives';
-import { Button } from '@/components/ui/button';
-import { AdminHeader, Panel } from '../admin-ui';
+import type { Property, PropertyType } from '@/lib/types';
+import { Badge, Input } from '@/components/ui/primitives';
+import { Button, LinkButton } from '@/components/ui/button';
+import { AdminHeader, Panel, TableEmpty, TableError, TableLoading, Td, Th } from '../admin-ui';
 
-interface RowIssue {
-  row: number;
-  errors: string[];
+type AdminProperty = Property & { localityName: string | null; mergedIntoId: string | null };
+interface PropertyPage {
+  items: AdminProperty[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
-interface ImportResult {
-  dryRun: boolean;
-  totalRows: number;
-  validRows: number;
-  createdCount: number;
-  createdIds: string[];
-  issues: RowIssue[];
-}
+const PAGE_SIZE = 25;
+const STATUSES = ['ALL', 'ACTIVE', 'HIDDEN', 'ARCHIVED', 'MERGED'] as const;
+const TYPE_LABELS: Record<PropertyType, string> = {
+  APARTMENT: 'Apartment',
+  PG: 'PG',
+  CO_LIVING: 'Co-living',
+  HOSTEL: 'Hostel',
+  INDEPENDENT_HOUSE: 'Independent house',
+  VILLA: 'Villa',
+  BUILDER_PROPERTY: 'Builder property',
+};
 
-const CSV_HEADER = 'displayName,propertyType,aliases,latitude,longitude,developer,yearBuilt';
-const CSV_EXAMPLE = `${CSV_HEADER}
-Prestige Lakeside Habitat,APARTMENT,PLH;Prestige Lakeside,12.9089,77.6810,Prestige Group,2018`;
-
-export default function PropertiesImportPage() {
+export default function AdminPropertiesPage() {
   const { request } = useAuth();
-  const [localities, setLocalities] = useState<Locality[]>([]);
-  const [localityId, setLocalityId] = useState('');
-  const [csv, setCsv] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [items, setItems] = useState<AdminProperty[]>([]);
+  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<(typeof STATUSES)[number]>('ALL');
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [moreError, setMoreError] = useState<string | null>(null);
 
-  const loadLocalities = useCallback(async () => {
-    try {
-      const { data } = await apiFetch<Locality[]>('/localities');
-      setLocalities(data);
-      if (data.length) setLocalityId((cur) => cur || data[0].id);
-    } catch {
-      /* localities are optional for rendering the form */
-    }
-  }, []);
+  const load = useCallback(
+    async (currentCursor: string | null, append = false) => {
+      append ? setLoadingMore(true) : setLoading(true);
+      setError(null);
+      if (append) setMoreError(null);
+      try {
+        const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+        if (query.trim()) params.set('search', query.trim());
+        if (status !== 'ALL') params.set('status', status);
+        if (currentCursor) params.set('cursor', currentCursor);
+        const page = await request<PropertyPage>(`/properties/admin/list?${params.toString()}`);
+        setItems((current) => (append ? [...current, ...page.items] : page.items));
+        setNextCursor(page.nextCursor);
+        setHasMore(page.hasMore);
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : 'Could not load properties.';
+        if (append) setMoreError(message);
+        else setError(message);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [query, request, status],
+  );
 
   useEffect(() => {
-    void loadLocalities();
-  }, [loadLocalities]);
-
-  async function run(dryRun: boolean) {
-    if (!localityId || !csv.trim()) {
-      setError('Pick a locality and paste CSV content first.');
+    if (!query.trim()) {
+      setItems([]);
+      setNextCursor(null);
+      setHasMore(false);
+      setLoading(false);
+      setError(null);
       return;
     }
-    setBusy(true);
-    setError(null);
-    setResult(null);
-    try {
-      const data = await request<ImportResult>('/admin/properties/import', {
-        method: 'POST',
-        body: JSON.stringify({ csv, localityId, dryRun }),
-      });
-      setResult(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Import failed.');
-    } finally {
-      setBusy(false);
-    }
+    void load(null);
+  }, [load, query]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setQuery(search);
+      setCursor(null);
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [search]);
+
+  function chooseStatus(value: (typeof STATUSES)[number]) {
+    setStatus(value);
+    setCursor(null);
+  }
+
+  function loadNext() {
+    if (!nextCursor || loadingMore) return;
+    setCursor(nextCursor);
+    void load(nextCursor, true);
   }
 
   return (
     <div>
-      <AdminHeader title="Import properties" description="Bulk-add properties to a locality from CSV. Validate with a dry run first." />
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        {/* ---- Form ---- */}
-        <Panel className="p-6">
-          <div className="space-y-5">
-            <Field label="Locality" htmlFor="locality" hint="All imported properties are added to this locality.">
-              <select
-                id="locality"
-                value={localityId}
-                onChange={(e) => setLocalityId(e.target.value)}
-                className="h-11 w-full rounded-md border border-input bg-card px-3.5 t-body text-foreground focus:border-primary"
-              >
-                {localities.length === 0 && <option value="">No localities available</option>}
-                {localities.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="CSV content" htmlFor="csv" hint="First row must be the header. See the format on the right.">
-              <textarea
-                id="csv"
-                value={csv}
-                onChange={(e) => setCsv(e.target.value)}
-                rows={12}
-                spellCheck={false}
-                placeholder={CSV_EXAMPLE}
-                className="w-full rounded-md border border-input bg-card px-3.5 py-3 font-mono text-[12.5px] leading-relaxed text-foreground placeholder:text-muted-foreground focus:border-primary"
-              />
-            </Field>
-
-            {error && (
-              <p className="flex items-center gap-2 t-body text-destructive">
-                <AlertCircle className="size-4" aria-hidden /> {error}
-              </p>
-            )}
-
-            <div className="flex gap-2.5">
-              <Button variant="secondary" loading={busy} onClick={() => void run(true)}>
-                Validate (dry run)
-              </Button>
-              <Button variant="primary" loading={busy} onClick={() => void run(false)}>
-                <UploadCloud className="size-4" aria-hidden /> Import
-              </Button>
-            </div>
+      <AdminHeader
+        title="Properties"
+        description="Search for a property to review or edit its record. The catalogue is only loaded after you search."
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <LinkButton href="/admin/properties/import" variant="secondary" size="sm">
+              <UploadCloud className="size-4" aria-hidden />
+              Import CSV
+            </LinkButton>
+            <LinkButton href="/admin/properties/new" size="sm">
+              <Plus className="size-4" aria-hidden />
+              Add property
+            </LinkButton>
           </div>
-        </Panel>
+        }
+      />
 
-        {/* ---- Format reference + result ---- */}
-        <div className="space-y-5">
-          <Panel className="p-5">
-            <p className="t-label text-foreground">Expected columns</p>
-            <pre className="mt-3 overflow-x-auto rounded-md bg-muted px-3 py-2.5 font-mono text-[11.5px] leading-relaxed text-muted-foreground">
-              {CSV_HEADER}
-            </pre>
-            <ul className="mt-3 space-y-1 t-helper">
-              <li>propertyType: APARTMENT, PG, CO_LIVING, HOSTEL, INDEPENDENT_HOUSE, VILLA, BUILDER_PROPERTY</li>
-              <li>aliases: semicolon-separated, optional</li>
-              <li>latitude/longitude/developer/yearBuilt: optional</li>
-            </ul>
-          </Panel>
-
-          {result && <ResultPanel result={result} />}
+      <Panel>
+        <div className="flex flex-col gap-3 border-b border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+          <label className="relative block w-full sm:max-w-md">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search properties or aliases"
+              className="pl-9"
+              aria-label="Search properties or aliases"
+            />
+          </label>
+          <label className="relative block w-full sm:w-48">
+            <span className="sr-only">Filter by status</span>
+            <select
+              value={status}
+              onChange={(event) => chooseStatus(event.target.value as (typeof STATUSES)[number])}
+              className="h-11 w-full appearance-none rounded-md border border-input bg-card px-3.5 pr-9 t-body text-foreground"
+            >
+              {STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {value === 'ALL' ? 'All statuses' : value[0] + value.slice(1).toLowerCase()}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+          </label>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function ResultPanel({ result }: { result: ImportResult }) {
-  const ok = result.issues.length === 0;
-  return (
-    <Panel className="p-5">
-      <div className="flex items-center gap-2">
-        {ok ? (
-          <CheckCircle2 className="size-5 text-success" aria-hidden />
+        {error ? (
+          <TableError message={error} onRetry={() => void load(cursor)} />
+        ) : loading ? (
+          <TableLoading />
+        ) : !query.trim() ? (
+          <TableEmpty
+            title="Search the property catalogue"
+            body="Enter a property name or known alias to find the record you need to review."
+          />
+        ) : items.length === 0 ? (
+          <TableEmpty
+            title={
+              query || status !== 'ALL'
+                ? 'No matching properties'
+                : 'No properties in the catalogue yet'
+            }
+            body={
+              query
+                ? `Nothing matched “${query}”. Try another name or alias.`
+                : 'Add the first property or import your existing catalogue.'
+            }
+          />
         ) : (
-          <AlertCircle className="size-5 text-warning" aria-hidden />
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px] border-collapse">
+                <thead className="border-b border-border bg-muted/40">
+                  <tr>
+                    <Th>Property</Th>
+                    <Th>Location</Th>
+                    <Th>Type</Th>
+                    <Th>Status</Th>
+                    <Th>Added</Th>
+                    <Th>
+                      <span className="sr-only">Actions</span>
+                    </Th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {items.map((property) => (
+                    <tr key={property.id} className="hover:bg-muted/30">
+                      <Td>
+                        <div className="font-medium text-foreground">{property.displayName}</div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          {property.aliases.length
+                            ? `Also known as ${property.aliases.slice(0, 2).join(', ')}`
+                            : property.slug}
+                        </div>
+                      </Td>
+                      <Td className="text-muted-foreground">
+                        {property.localityName ?? 'Location not set'}
+                      </Td>
+                      <Td className="text-muted-foreground">
+                        {TYPE_LABELS[property.propertyType] ?? property.propertyType}
+                      </Td>
+                      <Td>
+                        <Badge
+                          tone={
+                            property.status === 'ACTIVE'
+                              ? 'success'
+                              : property.status === 'HIDDEN'
+                                ? 'warning'
+                                : 'neutral'
+                          }
+                        >
+                          {property.status[0] + property.status.slice(1).toLowerCase()}
+                        </Badge>
+                      </Td>
+                      <Td className="text-muted-foreground">
+                        {new Date(property.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </Td>
+                      <Td>
+                        <div className="flex items-center justify-end gap-3">
+                          {property.status === 'MERGED' ? (
+                            property.mergedIntoId ? (
+                              <Link
+                                href={`/admin/properties/${property.mergedIntoId}`}
+                                className="inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap t-label text-primary hover:underline"
+                              >
+                                Edit survivor
+                                <ArrowRight className="size-3.5" aria-hidden />
+                              </Link>
+                            ) : (
+                              <span className="t-meta text-muted-foreground">Merged record</span>
+                            )
+                          ) : (
+                            <Link
+                              href={`/admin/properties/${property.id}`}
+                              className="inline-flex min-h-10 items-center gap-1.5 whitespace-nowrap t-label text-primary hover:underline"
+                            >
+                              Edit details
+                              <ArrowRight className="size-3.5" aria-hidden />
+                            </Link>
+                          )}
+                          <Link
+                            href={`/properties/${property.id}`}
+                            className="whitespace-nowrap t-meta text-muted-foreground hover:text-foreground"
+                          >
+                            View
+                          </Link>
+                        </div>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="t-meta">
+                Showing {items.length} {items.length === 1 ? 'property' : 'properties'}
+              </p>
+              {moreError && (
+                <p role="alert" className="t-meta text-destructive">
+                  {moreError}{' '}
+                  <button
+                    className="ml-1 underline"
+                    onClick={() => nextCursor && void load(nextCursor, true)}
+                  >
+                    Retry
+                  </button>
+                </p>
+              )}
+              {hasMore && (
+                <Button variant="secondary" size="sm" loading={loadingMore} onClick={loadNext}>
+                  Load more
+                </Button>
+              )}
+            </div>
+          </>
         )}
-        <p className="t-label text-foreground">{result.dryRun ? 'Dry run complete' : 'Import complete'}</p>
-        {result.dryRun && <Badge tone="neutral">No changes saved</Badge>}
-      </div>
-
-      <dl className="mt-4 grid grid-cols-2 gap-3">
-        <Stat label="Total rows" value={result.totalRows} />
-        <Stat label="Valid rows" value={result.validRows} />
-        {!result.dryRun && <Stat label="Created" value={result.createdCount} />}
-        <Stat label="Issues" value={result.issues.length} />
-      </dl>
-
-      {result.issues.length > 0 && (
-        <div className="mt-4 border-t border-border pt-4">
-          <p className="t-helper">Rows with problems</p>
-          <ul className="mt-2 max-h-56 space-y-2 overflow-y-auto">
-            {result.issues.map((iss) => (
-              <li key={iss.row} className="rounded-md bg-destructive/5 px-3 py-2">
-                <span className="t-label text-destructive">Row {iss.row}</span>
-                <p className="mt-0.5 t-helper">{iss.errors.join('; ')}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div>
-      <dt className="t-helper">{label}</dt>
-      <dd className="tabular text-xl font-semibold text-foreground">{value}</dd>
+      </Panel>
     </div>
   );
 }

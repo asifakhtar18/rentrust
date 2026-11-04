@@ -30,6 +30,13 @@ export default function PrivacyPage() {
           <strong>Usage data:</strong> basic technical information needed to run and secure the
           service.
         </li>
+        <li>
+          <strong>Map use:</strong> when you browse the map, RenTrust receives the visible map
+          bounds to load property pins. Your browser requests map tiles from the displayed map
+          provider, which receives those requests and your network address. If you choose “My
+          location,” the precise device coordinates are used in your browser to center the map; we
+          do not save that GPS point. The property-pin request uses the visible map bounds.
+        </li>
       </ul>
 
       <h2>Reviewer anonymity</h2>

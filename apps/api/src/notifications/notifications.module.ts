@@ -69,12 +69,23 @@ export class NotificationsModule implements OnModuleInit {
     reviewId: string,
     payload: { type: string; title: string; body: string; alsoEmail?: boolean },
   ): Promise<void> {
-    const review = await this.prisma.review.findUnique({ where: { id: reviewId } });
+    const review = await this.prisma.review.findUnique({
+      where: { id: reviewId },
+      include: { property: { select: { displayName: true, slug: true } } },
+    });
     if (!review) return;
     await this.notifications.notify({
       userId: review.authorId,
       ...payload,
-      data: { reviewId, propertyId: review.propertyId },
+      body:
+        payload.type === 'REVIEW_PUBLISHED'
+          ? `Your review for ${review.property.displayName} is published and helping other renters.`
+          : payload.body,
+      data: {
+        reviewId,
+        propertyId: review.propertyId,
+        propertyName: review.property.displayName,
+      },
     });
   }
 }

@@ -21,6 +21,7 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "ts-node prisma/seed.ts",
+    "db:seed:geography": "ts-node prisma/seed-geography.ts",
     "db:studio": "prisma studio"
   },
   "prisma": {

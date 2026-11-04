@@ -3,6 +3,7 @@ import type { PublicReview } from '@/lib/types';
 import { TENURE_LABELS, humanizeTag } from '@/lib/labels';
 import { Badge, Card } from '@/components/ui/primitives';
 import { OwnerResponse } from './owner-response';
+import { ReportReviewButton } from './report-review-button';
 
 /*
  * Anonymised resident review. Only non-identifying public fields — alias,
@@ -52,6 +53,9 @@ export function ReviewCard({ review }: { review: PublicReview }) {
       )}
 
       <OwnerResponse reviewId={review.id} />
+      <div className="mt-4 flex justify-end border-t border-border pt-3">
+        <ReportReviewButton reviewId={review.id} />
+      </div>
     </Card>
   );
 }

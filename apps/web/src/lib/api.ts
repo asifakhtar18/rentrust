@@ -72,7 +72,14 @@ export async function apiFetch<T>(
 
   const url = path.startsWith('http') ? path : `${getApiBaseUrl()}${path}`;
 
-  const res = await fetch(url, { ...fetchInit, headers });
+  // Keep stalled public catalogue/search calls from leaving the interface in
+  // an endless spinner. Callers that need a longer or cancellable request can
+  // provide their own AbortSignal.
+  const res = await fetch(url, {
+    ...fetchInit,
+    headers,
+    signal: fetchInit.signal ?? AbortSignal.timeout(15_000),
+  });
 
   if (!res.ok) {
     let code = 'UNKNOWN';

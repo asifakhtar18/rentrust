@@ -116,20 +116,24 @@ export class AdminService {
   }
 
   async setUserRoles(actorId: string, userId: string, roles: User['roles']): Promise<User> {
-    if (actorId === userId && !roles.includes('ADMIN')) {
+    const effectiveRoles: User['roles'] = roles.includes('USER') ? roles : ['USER', ...roles];
+    if (actorId === userId && !effectiveRoles.includes('ADMIN')) {
       throw new ValidationException('You cannot remove your own admin role.');
     }
     const user = await this.prisma.user.findFirst({ where: { id: userId, deletedAt: null } });
     if (!user) {
       throw new NotFoundAppException('User not found', ErrorCode.USER_NOT_FOUND);
     }
-    const updated = await this.prisma.user.update({ where: { id: userId }, data: { roles } });
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { roles: effectiveRoles },
+    });
     await this.audit.record({
       actorId,
       action: 'USER_ROLES_UPDATED',
       entityType: 'User',
       entityId: userId,
-      metadata: { roles },
+      metadata: { roles: effectiveRoles },
     });
     return updated;
   }

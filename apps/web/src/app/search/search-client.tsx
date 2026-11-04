@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Building2, MapPin, User, Loader2, ChevronRight } from 'lucide-react';
+import { Building2, MapPin, User, Loader2, ChevronRight, RefreshCw } from 'lucide-react';
 import { apiFetch, qs } from '@/lib/api';
 import type { SearchHit } from '@/lib/types';
 import { PROPERTY_TYPE_LABELS } from '@/lib/labels';
 import { cn } from '@/lib/cn';
 import { SearchBar } from '@/components/search/search-bar';
 import { Card, EmptyState } from '@/components/ui/primitives';
+import { Button } from '@/components/ui/button';
 
 type Filter = 'all' | 'property' | 'landlord' | 'locality';
 const FILTERS: { key: Filter; label: string }[] = [
@@ -26,23 +27,29 @@ export function SearchClient() {
   const [filter, setFilter] = useState<Filter>('all');
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const reqId = useRef(0);
 
   const run = useCallback(async () => {
+    const id = ++reqId.current;
     if (!q.trim()) {
       setHits([]);
+      setLoading(false);
+      setError(null);
       return;
     }
-    const id = ++reqId.current;
     setLoading(true);
-    setError(false);
+    setError(null);
     try {
       const types = filter === 'all' ? undefined : filter;
       const { data } = await apiFetch<SearchHit[]>(`/search${qs({ q, types, limit: 30 })}`);
       if (id === reqId.current) setHits(data);
-    } catch {
-      if (id === reqId.current) setError(true);
+    } catch (cause) {
+      if (id === reqId.current) {
+        setError(cause instanceof DOMException && cause.name === 'TimeoutError'
+          ? 'Search took too long. Check your connection and try again.'
+          : 'Couldn’t load these results. Try again in a moment.');
+      }
     } finally {
       if (id === reqId.current) setLoading(false);
     }
@@ -81,11 +88,14 @@ export function SearchClient() {
             body="Find a property, landlord, PG, or locality. Typos are fine — we'll figure it out."
           />
         ) : loading ? (
-          <div className="flex items-center gap-2 py-10 t-meta">
+          <div role="status" aria-live="polite" className="flex items-center gap-2 py-10 t-meta">
             <Loader2 className="size-4 animate-spin text-primary" /> Searching…
           </div>
         ) : error ? (
-          <p className="py-10 t-body text-destructive">Couldn&apos;t load results. Try again.</p>
+          <div role="alert" className="py-10">
+            <p className="t-body text-destructive">{error}</p>
+            <Button variant="secondary" size="sm" className="mt-4" onClick={() => void run()}><RefreshCw className="size-3.5" aria-hidden /> Retry search</Button>
+          </div>
         ) : hits.length === 0 ? (
           <EmptyState
             title={`No matches for “${q}”`}

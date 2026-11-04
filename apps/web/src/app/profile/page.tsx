@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
-import { Loader2, ShieldCheck, Mail, FileText, LogOut, Lock, KeyRound } from 'lucide-react';
+import { Loader2, ShieldCheck, Mail, FileText, LogOut, Lock, KeyRound, MapPin } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import type { MyReview, ReviewStatus, MyClaim, ClaimStatus, MyVerification } from '@/lib/types';
+import type { MyReview, MyLocalityReview, ReviewStatus, MyClaim, ClaimStatus, MyVerification } from '@/lib/types';
 import { TENURE_LABELS } from '@/lib/labels';
 import { Section, Card, EmptyState, Badge } from '@/components/ui/primitives';
 import { LinkButton, Button } from '@/components/ui/button';
@@ -31,7 +31,9 @@ const CLAIM_STATUS_META: Record<ClaimStatus, { label: string; tone: 'neutral' | 
 export default function ProfilePage() {
   const { user, loading: authLoading, request, logout } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [reviews, setReviews] = useState<MyReview[]>([]);
+  const [localityReviews, setLocalityReviews] = useState<MyLocalityReview[]>([]);
   const [claims, setClaims] = useState<MyClaim[]>([]);
   const [verifications, setVerifications] = useState<MyVerification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,12 +49,14 @@ export default function ProfilePage() {
     setLoading(true);
     setError(null);
     try {
-      const [reviewData, claimData, verificationData] = await Promise.all([
+      const [reviewData, claimData, verificationData, localityReviewData] = await Promise.all([
         request<MyReview[]>('/me/reviews'),
         request<MyClaim[]>('/claims/mine').catch(() => [] as MyClaim[]),
         request<MyVerification[]>('/verifications/mine').catch(() => [] as MyVerification[]),
+        request<MyLocalityReview[]>('/me/locality-reviews').catch(() => [] as MyLocalityReview[]),
       ]);
       setReviews(reviewData);
+      setLocalityReviews(localityReviewData);
       setClaims(claimData);
       setVerifications(verificationData);
     } catch (e) {
@@ -91,6 +95,16 @@ export default function ProfilePage() {
   return (
     <Section className="py-10">
       <h1 className="t-page-title text-foreground">Your account</h1>
+      {searchParams.get('reviewSubmitted') === '1' && (
+        <p role="status" className="mt-4 rounded-md border border-success/25 bg-success/10 px-4 py-3 t-meta text-success">
+          Your review was received. It will appear publicly after moderation; you can track its status below.
+        </p>
+      )}
+      {searchParams.get('areaReviewSubmitted') === '1' && (
+        <p role="status" className="mt-4 rounded-md border border-success/25 bg-success/10 px-4 py-3 t-meta text-success">
+          Your area review was received. It will appear publicly after moderation; track its status below.
+        </p>
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[320px_1fr]">
         {/* ---- Identity + privacy column ---- */}
@@ -222,6 +236,19 @@ export default function ProfilePage() {
               </Card>
             </div>
           )}
+          {!loading && localityReviews.length > 0 && (
+            <div className="mt-8">
+              <div className="flex items-center justify-between"><h2 className="t-section-title text-foreground">Your area reviews</h2><span className="t-meta">{localityReviews.length} total</span></div>
+              <Card elevated className="mt-4 divide-y divide-border overflow-hidden">
+                {localityReviews.map((review) => <div key={review.id} className="flex items-center gap-4 px-4 py-4">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><MapPin className="size-5" aria-hidden /></span>
+                  <div className="min-w-0 flex-1"><Link href={`/localities/${review.localityId}`} className="t-label text-foreground hover:text-primary">{review.locality.name}</Link><p className="mt-0.5 t-meta">Neighbourhood experience · {new Date(review.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p></div>
+                  {review.overall != null && <span className="tabular t-label text-foreground">{review.overall.toFixed(1)} / 5</span>}
+                  <Badge tone={STATUS_META[review.status].tone}>{STATUS_META[review.status].label}</Badge>
+                </div>)}
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </Section>
@@ -269,7 +296,7 @@ function MyReviewRow({ review, hasVerificationRequest }: { review: MyReview; has
       </span>
       <div className="min-w-0 flex-1">
         <Link href={`/properties/${review.propertyId}`} className="t-label text-foreground hover:text-primary">
-          View property
+          {review.property.displayName}
         </Link>
         <p className="mt-0.5 t-meta">
           {TENURE_LABELS[review.tenure] ?? review.tenure} · {date}

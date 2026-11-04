@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { MapPin, Building2 } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { apiFetch, ApiError } from '@/lib/api';
 import type { PropertyDetail, PublicReview, TrustScore as TrustScoreT } from '@/lib/types';
 import { CATEGORY_LABELS, PROPERTY_TYPE_LABELS, humanizeTag } from '@/lib/labels';
@@ -10,6 +10,7 @@ import { TrustScore, CategoryRow } from '@/components/trust-score/trust-score';
 import { ReviewCard } from '@/components/review/review-card';
 import { SaveButton } from '@/components/property/save-button';
 import { ClaimButton } from '@/components/property/claim-button';
+import { PropertyImages } from '@/components/property/property-images';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,23 +37,42 @@ export default async function PropertyPage({ params }: { params: { id: string } 
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <Badge tone="brand">{PROPERTY_TYPE_LABELS[detail.propertyType] ?? detail.propertyType}</Badge>
+            <Badge tone="brand">
+              {PROPERTY_TYPE_LABELS[detail.propertyType] ?? detail.propertyType}
+            </Badge>
             {detail.isClaimed && <Badge tone="success">Claimed</Badge>}
           </div>
           <h1 className="t-page-title text-foreground">{detail.displayName}</h1>
           <p className="mt-1.5 flex items-center gap-1.5 t-callout text-muted-foreground">
             <MapPin className="size-4" aria-hidden />
-            {detail.locality?.name ? `${detail.locality.name}, Bengaluru` : 'Bengaluru'}
-            {detail.developer && <span className="text-muted-foreground/60">· {detail.developer}</span>}
-            {detail.yearBuilt && <span className="text-muted-foreground/60">· Built {detail.yearBuilt}</span>}
+            {detail.locality?.name
+              ? [detail.locality.name, detail.locality.city?.name, detail.locality.city?.state?.name]
+                  .filter(Boolean)
+                  .join(', ')
+              : detail.address
+                ? [detail.address.city?.name, detail.address.city?.state?.name].filter(Boolean).join(', ') || 'Location not listed'
+                : 'Location not listed'}
+            {detail.developer && (
+              <span className="text-muted-foreground/60">· {detail.developer}</span>
+            )}
+            {detail.yearBuilt && (
+              <span className="text-muted-foreground/60">· Built {detail.yearBuilt}</span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap gap-2.5">
           <SaveButton propertyId={detail.id} />
           <ClaimButton propertyId={detail.id} isClaimed={detail.isClaimed} />
           <LinkButton href={`/reviews/new?propertyId=${detail.id}`}>Write a review</LinkButton>
+          <LinkButton href={`/properties/suggest?propertyId=${encodeURIComponent(detail.id)}&kind=EDIT_PROPERTY`} variant="secondary" size="sm">Suggest an update or photo</LinkButton>
         </div>
       </div>
+
+      <PropertyImages
+        propertyId={detail.id}
+        propertyName={detail.displayName}
+        images={detail.images ?? []}
+      />
 
       {/* ── Score + breakdown ── */}
       <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_1.4fr]">
@@ -67,7 +87,12 @@ export default async function PropertyPage({ params }: { params: { id: string } 
               )}
               {score.lastCalculatedAt && (
                 <p className="mt-4 t-helper">
-                  Updated {new Date(score.lastCalculatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  Updated{' '}
+                  {new Date(score.lastCalculatedAt).toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
                 </p>
               )}
             </>
@@ -94,12 +119,13 @@ export default async function PropertyPage({ params }: { params: { id: string } 
       </div>
 
       {/* ── Sentiment themes ── */}
-      {score.hasEnoughData && (score.positiveThemes.length > 0 || score.negativeThemes.length > 0) && (
-        <div className="mt-5 grid gap-5 sm:grid-cols-2">
-          <ThemeCard title="What residents like" tone="success" themes={score.positiveThemes} />
-          <ThemeCard title="Common complaints" tone="warning" themes={score.negativeThemes} />
-        </div>
-      )}
+      {score.hasEnoughData &&
+        (score.positiveThemes.length > 0 || score.negativeThemes.length > 0) && (
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <ThemeCard title="What residents like" tone="success" themes={score.positiveThemes} />
+            <ThemeCard title="Common complaints" tone="warning" themes={score.negativeThemes} />
+          </div>
+        )}
 
       {/* ── Amenities ── */}
       {detail.amenities.length > 0 && (
@@ -107,7 +133,12 @@ export default async function PropertyPage({ params }: { params: { id: string } 
           <h2 className="t-title3 text-foreground">Amenities</h2>
           <div className="mt-3 flex flex-wrap gap-2">
             {detail.amenities.map((a) => (
-              <span key={a} className="rounded-md border border-border bg-muted/50 px-2.5 py-1 t-meta text-foreground/80">{a}</span>
+              <span
+                key={a}
+                className="rounded-md border border-border bg-muted/50 px-2.5 py-1 t-meta text-foreground/80"
+              >
+                {a}
+              </span>
             ))}
           </div>
         </Card>
@@ -124,7 +155,11 @@ export default async function PropertyPage({ params }: { params: { id: string } 
           <EmptyState
             title="No reviews yet"
             body="If you've lived here, share your experience to help the next renter."
-            action={<LinkButton href={`/reviews/new?propertyId=${detail.id}`} size="sm">Write the first review</LinkButton>}
+            action={
+              <LinkButton href={`/reviews/new?propertyId=${detail.id}`} size="sm">
+                Write the first review
+              </LinkButton>
+            }
           />
         ) : (
           <div className="space-y-3">
@@ -136,14 +171,25 @@ export default async function PropertyPage({ params }: { params: { id: string } 
 
         <p className="mt-6 t-helper">
           Reviews reflect individual resident experiences, not verified platform facts.{' '}
-          <Link href="/guidelines" className="text-primary hover:underline">Review guidelines</Link>.
+          <Link href="/guidelines" className="text-primary hover:underline">
+            Review guidelines
+          </Link>
+          .
         </p>
       </section>
     </Section>
   );
 }
 
-function ThemeCard({ title, tone, themes }: { title: string; tone: 'success' | 'warning'; themes: string[] }) {
+function ThemeCard({
+  title,
+  tone,
+  themes,
+}: {
+  title: string;
+  tone: 'success' | 'warning';
+  themes: string[];
+}) {
   return (
     <Card className="p-6">
       <h3 className="t-meta font-medium text-foreground">{title}</h3>
@@ -152,7 +198,9 @@ function ThemeCard({ title, tone, themes }: { title: string; tone: 'success' | '
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
           {themes.map((t) => (
-            <Badge key={t} tone={tone}>{humanizeTag(t)}</Badge>
+            <Badge key={t} tone={tone}>
+              {humanizeTag(t)}
+            </Badge>
           ))}
         </div>
       )}

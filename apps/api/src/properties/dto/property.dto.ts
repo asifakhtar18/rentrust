@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { PropertyType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { PropertyStatus, PropertyType } from '@prisma/client';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -10,6 +10,7 @@ import {
   IsLongitude,
   IsOptional,
   IsString,
+  IsIn,
   IsUUID,
   Max,
   MaxLength,
@@ -114,6 +115,12 @@ export class CreatePropertyDto {
   @IsString()
   @MaxLength(5000)
   description?: string;
+
+  @ApiPropertyOptional({ maxLength: 2048 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  googleMapsUrl?: string;
 }
 
 export class UpdatePropertyDto {
@@ -129,6 +136,47 @@ export class UpdatePropertyDto {
   @IsEnum(PropertyType)
   propertyType?: PropertyType;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  localityId?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  addressLine1?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(240)
+  addressLine2?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  postalCode?: string | null;
+
+  @ApiPropertyOptional({ maxLength: 2048 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2048)
+  googleMapsUrl?: string | null;
+
+  @ApiPropertyOptional({
+    enum: [PropertyStatus.ACTIVE, PropertyStatus.HIDDEN, PropertyStatus.ARCHIVED],
+  })
+  @IsOptional()
+  @IsIn([PropertyStatus.ACTIVE, PropertyStatus.HIDDEN, PropertyStatus.ARCHIVED])
+  status?: 'ACTIVE' | 'HIDDEN' | 'ARCHIVED';
+
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
   @IsArray()
@@ -140,15 +188,15 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsString()
   @MaxLength(200)
-  developer?: string;
+  developer?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsInt()
   @Min(1800)
   @Max(2100)
-  @Type(() => Number)
-  yearBuilt?: number;
+  @Transform(({ value }) => (value === null || value === '' ? value : Number(value)))
+  yearBuilt?: number | null;
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
@@ -161,7 +209,97 @@ export class UpdatePropertyDto {
   @IsOptional()
   @IsString()
   @MaxLength(5000)
-  description?: string;
+  description?: string | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsLatitude()
+  @Transform(({ value }) => (value === null || value === '' ? value : Number(value)))
+  latitude?: number | null;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsLongitude()
+  @Transform(({ value }) => (value === null || value === '' ? value : Number(value)))
+  longitude?: number | null;
+}
+
+export class AdminListPropertiesQuery {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+
+  @ApiPropertyOptional({ default: 25, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit = 25;
+
+  @ApiPropertyOptional({ description: 'Search property names and aliases' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
+
+  @ApiPropertyOptional({ enum: PropertyStatus })
+  @IsOptional()
+  @IsEnum(PropertyStatus)
+  status?: PropertyStatus;
+}
+
+export class PropertySimilarityQuery {
+  @ApiProperty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(200)
+  name!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  cityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  localityId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsLatitude()
+  @Type(() => Number)
+  latitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsLongitude()
+  @Type(() => Number)
+  longitude?: number;
+}
+
+export class PropertyMapBoundsQuery {
+  @ApiProperty()
+  @IsLongitude()
+  @Type(() => Number)
+  west!: number;
+
+  @ApiProperty()
+  @IsLatitude()
+  @Type(() => Number)
+  south!: number;
+
+  @ApiProperty()
+  @IsLongitude()
+  @Type(() => Number)
+  east!: number;
+
+  @ApiProperty()
+  @IsLatitude()
+  @Type(() => Number)
+  north!: number;
 }
 
 export class ListPropertiesQuery {

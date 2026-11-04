@@ -7,10 +7,11 @@ import { useAuth } from '@/lib/auth-context';
 import { ApiError } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, Field, Input } from '@/components/ui/primitives';
+import { PasswordField } from '@/components/auth/password-field';
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<Card className="p-7"><p className="t-meta">Loading…</p></Card>}>
+    <Suspense fallback={<Card className="border-0 bg-transparent p-0 shadow-none"><p className="t-meta">Preparing your sign-in…</p></Card>}>
       <LoginForm />
     </Suspense>
   );
@@ -43,16 +44,17 @@ function LoginForm() {
   }
 
   return (
-    <Card className="p-7" elevated>
-      <h1 className="t-section-title text-foreground">Welcome back</h1>
-      <p className="mt-1 t-meta">Sign in to review, save, and compare.</p>
+    <Card className="border-0 bg-transparent p-0 shadow-none">
+      <p className="eyebrow">Good to see you</p>
+      <h1 className="mt-3 t-page-title text-foreground">Welcome back.</h1>
+      <p className="mt-2 t-body text-muted-foreground">Save places and share your experience.</p>
 
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
+      <form onSubmit={onSubmit} className="mt-6 space-y-4 sm:mt-8 sm:space-y-5">
         <Field label="Email" htmlFor="email">
-          <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@example.com" />
         </Field>
         <Field label="Password" htmlFor="password">
-          <Input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <PasswordField id="password" autoComplete="current-password" value={password} onChange={setPassword} />
         </Field>
 
         {error && (
@@ -61,7 +63,7 @@ function LoginForm() {
           </p>
         )}
 
-        <Button type="submit" loading={loading} className="w-full">Sign in</Button>
+        <Button type="submit" loading={loading} size="lg" className="mt-2 w-full">Sign in</Button>
       </form>
 
       <div className="mt-5 flex items-center justify-between t-meta">

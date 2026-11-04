@@ -6,11 +6,13 @@ import { Suspense, useEffect, useState } from 'react';
 import { getApiBaseUrl } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Card, Field, Input } from '@/components/ui/primitives';
+import { PasswordField } from '@/components/auth/password-field';
 
 export default function ResetPasswordPage() {
   return (
-    <Card className="p-7" elevated>
-      <h1 className="t-section-title text-foreground">Choose a new password</h1>
+    <Card className="border-0 bg-transparent p-0 shadow-none">
+      <p className="eyebrow">One last step</p>
+      <h1 className="mt-3 t-page-title text-foreground">Choose a new password.</h1>
       <Suspense fallback={<p className="mt-4 t-meta">Loading…</p>}>
         <ResetForm />
       </Suspense>
@@ -65,12 +67,12 @@ function ResetForm() {
   return (
     <form onSubmit={onSubmit} className="mt-6 space-y-4">
       <Field label="New password" htmlFor="password" hint="At least 10 characters, with upper, lower, and a number.">
-        <Input id="password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <PasswordField id="password" autoComplete="new-password" value={password} onChange={setPassword} />
       </Field>
       {error && (
         <p role="alert" className="rounded-md bg-destructive/10 px-3 py-2 t-meta text-destructive">{error}</p>
       )}
-      <Button type="submit" loading={loading} className="w-full">Set new password</Button>
+      <Button type="submit" loading={loading} size="lg" className="w-full">Set new password</Button>
     </form>
   );
 }

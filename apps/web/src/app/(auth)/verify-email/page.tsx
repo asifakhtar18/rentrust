@@ -10,8 +10,9 @@ import { Card, Field, Input } from '@/components/ui/primitives';
 
 export default function VerifyEmailPage() {
   return (
-    <Card className="p-7" elevated>
-      <h1 className="t-section-title text-foreground">Email verification</h1>
+    <Card className="border-0 bg-transparent p-0 shadow-none">
+      <p className="eyebrow">Keep your account secure</p>
+      <h1 className="mt-3 t-page-title text-foreground">Email verification.</h1>
       <div className="mt-4">
         <Suspense fallback={<p className="t-meta">Loading…</p>}>
           <VerifyInner />
@@ -30,6 +31,7 @@ function VerifyInner() {
   const [email, setEmail] = useState('');
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
+  const [resendError, setResendError] = useState<string | null>(null);
   const verifiedRef = useRef(false);
 
   useEffect(() => {
@@ -56,13 +58,20 @@ function VerifyInner() {
   async function requestNewLink(event: FormEvent) {
     event.preventDefault();
     setResending(true);
-    await fetch(`${getApiBaseUrl()}/auth/verify-email/request`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    }).catch(() => undefined);
-    setResending(false);
-    setResent(true);
+    setResendError(null);
+    try {
+      const response = await fetch(`${getApiBaseUrl()}/auth/verify-email/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) throw new Error('Request failed');
+      setResent(true);
+    } catch {
+      setResendError('We couldn’t reach the verification service. Check your connection and try again.');
+    } finally {
+      setResending(false);
+    }
   }
 
   if (state === 'pending')
@@ -80,9 +89,10 @@ function VerifyInner() {
       ) : (
         <form onSubmit={requestNewLink} className="mt-5 space-y-4">
           <Field label="Account email" htmlFor="verification-email">
-            <Input id="verification-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            <Input id="verification-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="you@example.com" />
           </Field>
-          <Button type="submit" loading={resending} className="w-full">Resend verification link</Button>
+          {resendError && <p role="alert" className="t-meta text-destructive">{resendError}</p>}
+          <Button type="submit" loading={resending} size="lg" className="w-full">Resend verification link</Button>
         </form>
       )}
     </div>
@@ -97,9 +107,10 @@ function VerifyInner() {
       ) : (
         <form onSubmit={requestNewLink} className="mt-5 space-y-4">
           <Field label="Account email" htmlFor="verification-email">
-            <Input id="verification-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            <Input id="verification-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required placeholder="you@example.com" />
           </Field>
-          <Button type="submit" loading={resending} className="w-full">Send a new verification link</Button>
+          {resendError && <p role="alert" className="t-meta text-destructive">{resendError}</p>}
+          <Button type="submit" loading={resending} size="lg" className="w-full">Send a new verification link</Button>
         </form>
       )}
     </div>

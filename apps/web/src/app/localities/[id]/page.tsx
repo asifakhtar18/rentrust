@@ -3,25 +3,32 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { MapPin, Building2, ThumbsUp, ThumbsDown, ChevronRight } from 'lucide-react';
 import { apiFetch, ApiError } from '@/lib/api';
-import type { LocalityIntelligence, Property } from '@/lib/types';
+import type { LocalityIntelligence, Property, PublicLocalityReview } from '@/lib/types';
 import { CATEGORY_LABELS, PROPERTY_TYPE_LABELS, humanizeTag } from '@/lib/labels';
+import { TENURE_LABELS } from '@/lib/labels';
 import { Badge, Card, EmptyState, Section } from '@/components/ui/primitives';
 import { LinkButton } from '@/components/ui/button';
 import { TrustScore, CategoryRow } from '@/components/trust-score/trust-score';
 
+const AREA_LABELS: Record<string, string> = {
+  municipalServices: 'Municipal services',
+  publicTransport: 'Public transport',
+  healthcareAccess: 'Healthcare access',
+  foodAndGroceries: 'Food and groceries',
+  safety: 'Safety',
+  cleanliness: 'Cleanliness',
+  neighbourliness: 'Neighbourliness',
+};
+
 export const dynamic = 'force-dynamic';
 
 async function getData(id: string) {
-  try {
-    const [intel, properties] = await Promise.all([
-      apiFetch<LocalityIntelligence>(`/localities/${id}`),
-      apiFetch<Property[]>(`/properties?localityId=${id}&limit=50`),
-    ]);
-    return { intel: intel.data, properties: properties.data };
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound();
-    throw err;
-  }
+  const [intel, properties, areaReviews] = await Promise.all([
+    apiFetch<LocalityIntelligence>(`/localities/${id}`),
+    apiFetch<Property[]>(`/properties?localityId=${id}&limit=50`),
+    apiFetch<PublicLocalityReview[]>(`/localities/${id}/reviews`),
+  ]);
+  return { intel: intel.data, properties: properties.data, areaReviews: areaReviews.data };
 }
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
@@ -37,7 +44,22 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 export default async function LocalityPage({ params }: { params: { id: string } }) {
-  const { intel, properties } = await getData(params.id);
+  let data: Awaited<ReturnType<typeof getData>>;
+  try {
+    data = await getData(params.id);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    return (
+      <Section className="py-10">
+        <EmptyState
+          title="Area details are temporarily unavailable"
+          body="We couldn't load this area's information right now. Please try again in a moment."
+          action={<LinkButton href="/search" variant="secondary">Back to search</LinkButton>}
+        />
+      </Section>
+    );
+  }
+  const { intel, properties, areaReviews } = data;
 
   return (
     <Section className="py-10">
@@ -47,16 +69,57 @@ export default async function LocalityPage({ params }: { params: { id: string } 
         <h1 className="mt-2 t-page-title text-foreground">{intel.locality.name}</h1>
         <p className="mt-1.5 flex items-center gap-1.5 t-callout text-muted-foreground">
           <MapPin className="size-4" aria-hidden />
-          Bengaluru · {intel.propertyCount} {intel.propertyCount === 1 ? 'property' : 'properties'} tracked
+          {[intel.locality.city?.name, intel.locality.city?.state.name].filter(Boolean).join(', ')}
+          {intel.locality.city && ' · '}{intel.propertyCount} {intel.propertyCount === 1 ? 'property' : 'properties'} tracked
         </p>
       </div>
+
+      <section className="mt-8" aria-labelledby="area-experience-title">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="eyebrow">Neighbourhood experience</p>
+            <h2 id="area-experience-title" className="mt-2 t-section-title text-foreground">How is it to live in {intel.locality.name}?</h2>
+            <p className="mt-1.5 t-meta">Rate municipal services, transport, healthcare, food access, safety, cleanliness, and neighbours.</p>
+          </div>
+          <LinkButton href={`/reviews/locality?localityId=${encodeURIComponent(intel.locality.id)}`} size="sm">Review this area</LinkButton>
+        </div>
+        {areaReviews.length === 0 ? (
+          <EmptyState title="No area reviews yet" body="Property reviews are about individual buildings. Add the first separate neighbourhood review to help people understand the area." action={<LinkButton href={`/reviews/locality?localityId=${encodeURIComponent(intel.locality.id)}`} size="sm">Share an area review</LinkButton>} />
+        ) : (
+          <>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[260px_1fr]">
+              <Card elevated className="p-6">
+                <p className="eyebrow">Area experience</p>
+                <p className="mt-3 font-serif text-5xl text-foreground">{intel.areaExperience?.overallAverage?.toFixed(1) ?? '—'}<span className="ml-1 text-2xl text-muted-foreground">/ 5</span></p>
+                <p className="mt-2 t-meta">From {intel.areaExperience?.reviewCount ?? areaReviews.length} approved area {areaReviews.length === 1 ? 'review' : 'reviews'}</p>
+              </Card>
+              <Card elevated className="p-6">
+                <p className="eyebrow mb-4">Area categories · out of 5</p>
+                <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
+                  {Object.entries(intel.areaExperience?.categoryAverages ?? {}).map(([key, score]) => (
+                    <div key={key} className="flex items-center justify-between gap-3 border-b border-border pb-2 t-meta">
+                      <span>{AREA_LABELS[key] ?? key}</span><strong className="tabular text-foreground">{score.toFixed(1)} / 5</strong>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+            <div className="mt-4 space-y-3">
+              {areaReviews.map((review) => <article key={review.id} className="rounded-lg border border-border bg-card p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2"><p className="t-label text-foreground">{review.authorAlias}</p><p className="t-meta">{review.overall?.toFixed(1) ?? '—'} / 5 · {TENURE_LABELS[review.tenure] ?? review.tenure}</p></div>
+                {review.comments && <p className="mt-3 t-body text-muted-foreground">{review.comments}</p>}
+              </article>)}
+            </div>
+          </>
+        )}
+      </section>
 
       {intel.hasEnoughData ? (
         <>
           {/* ── Aggregate score + category averages ── */}
           <div className="mt-8 grid gap-5 lg:grid-cols-[1fr_1.4fr]">
             <Card className="p-7" elevated>
-              <p className="eyebrow mb-3">Average resident trust</p>
+              <p className="eyebrow mb-3">Average property trust</p>
               <TrustScore score={intel.averageTrustScore ?? 0} sampleSize={intel.totalReviews ?? 0} />
               <p className="mt-5 t-helper">
                 Averaged across {intel.scoredPropertyCount}{' '}
@@ -65,7 +128,7 @@ export default async function LocalityPage({ params }: { params: { id: string } 
             </Card>
 
             <Card className="p-7" elevated>
-              <p className="eyebrow mb-4">How this area rates</p>
+              <p className="eyebrow mb-4">Rental properties in this area</p>
               {intel.categoryAverages && Object.keys(intel.categoryAverages).length > 0 ? (
                 <div className="space-y-3.5">
                   {Object.entries(intel.categoryAverages)
@@ -117,10 +180,10 @@ export default async function LocalityPage({ params }: { params: { id: string } 
       ) : (
         <div className="mt-8">
           <EmptyState
-            title="Not enough resident data yet"
+            title="Not enough property review data yet"
             body={
               intel.message ??
-              `We're still gathering verified reviews for ${intel.locality.name}. Scores appear once residents share their experiences.`
+              `We're still gathering property reviews in ${intel.locality.name}. This score is separate from neighbourhood experience reviews.`
             }
             action={<LinkButton href="/search" variant="secondary">Browse properties</LinkButton>}
           />

@@ -20,7 +20,10 @@ interface ReviewCursor extends Record<string, unknown> {
   id: string;
 }
 
-type ReviewWithAnswer = Review & { answer: ReviewAnswer | null };
+type ReviewWithAnswer = Review & {
+  answer: ReviewAnswer | null;
+  property: { displayName: string; slug: string };
+};
 
 /**
  * Public, anonymised review projection. This is the ONLY shape returned on
@@ -203,7 +206,7 @@ export class ReviewsService {
   async listMine(authorId: string): Promise<ReviewWithAnswer[]> {
     return this.prisma.review.findMany({
       where: { authorId, deletedAt: null },
-      include: { answer: true },
+      include: { answer: true, property: { select: { displayName: true, slug: true } } },
       orderBy: { createdAt: 'desc' },
     });
   }

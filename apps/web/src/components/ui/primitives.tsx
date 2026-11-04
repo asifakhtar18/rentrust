@@ -20,7 +20,8 @@ export function Card({
       className={cn(
         'rounded-lg border border-border bg-card',
         elevated && 'shadow-sm',
-        interactive && 'transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md',
+        interactive &&
+          'transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md',
         className,
       )}
     >
@@ -39,9 +40,23 @@ const tones: Record<Tone, string> = {
   danger: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
-export function Badge({ children, tone = 'neutral', className }: { children: ReactNode; tone?: Tone; className?: string }) {
+export function Badge({
+  children,
+  tone = 'neutral',
+  className,
+}: {
+  children: ReactNode;
+  tone?: Tone;
+  className?: string;
+}) {
   return (
-    <span className={cn('inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-xs font-medium', tones[tone], className)}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-xs font-medium',
+        tones[tone],
+        className,
+      )}
+    >
       {children}
     </span>
   );
@@ -54,14 +69,19 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   invalid?: boolean;
 }
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, invalid, ...props }, ref) {
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
+  { className, invalid, ...props },
+  ref,
+) {
   return (
     <input
       ref={ref}
       className={cn(
         'h-11 w-full rounded-md border bg-card px-3.5 t-body text-foreground placeholder:text-muted-foreground',
         'transition-colors duration-150',
-        invalid ? 'border-destructive focus:border-destructive' : 'border-input focus:border-primary',
+        invalid
+          ? 'border-destructive focus:border-destructive'
+          : 'border-input focus:border-primary',
         className,
       )}
       {...props}
@@ -88,20 +108,32 @@ export function Field({
         {label}
       </label>
       {children}
-      {error ? <p className="t-helper text-destructive">{error}</p> : hint ? <p className="t-helper">{hint}</p> : null}
+      {error ? (
+        <p className="t-helper text-destructive">{error}</p>
+      ) : hint ? (
+        <p className="t-helper">{hint}</p>
+      ) : null}
     </div>
   );
 }
 
 export function Section({ children, className, ...props }: HTMLAttributes<HTMLElement>) {
   return (
-    <section className={cn('mx-auto max-w-[1200px] px-6', className)} {...props}>
+    <section className={cn('mx-auto w-full max-w-[1200px] px-4 sm:px-6', className)} {...props}>
       {children}
     </section>
   );
 }
 
-export function EmptyState({ title, body, action }: { title: string; body: string; action?: ReactNode }) {
+export function EmptyState({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action?: ReactNode;
+}) {
   return (
     <div className="rounded-lg border border-dashed border-border bg-card/50 px-6 py-12 text-center">
       <p className="t-section-title text-foreground">{title}</p>

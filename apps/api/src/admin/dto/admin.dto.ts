@@ -2,6 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { PropertyType, UserRole } from '@prisma/client';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsIn,
@@ -17,7 +19,9 @@ import {
 export class UpdateUserRolesDto {
   @ApiProperty({ enum: UserRole, isArray: true })
   @IsArray()
+  @ArrayMinSize(1)
   @ArrayMaxSize(5)
+  @ArrayUnique()
   @IsIn(Object.values(UserRole), { each: true })
   roles!: UserRole[];
 }

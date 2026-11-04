@@ -86,7 +86,9 @@ export class PostgresSearchProvider implements SearchProvider {
           COALESCE(ts_rank(p.search_vector, plainto_tsquery('simple', ${term})), 0)
           + GREATEST(
               similarity(p.display_name, ${term}),
-              similarity(p.canonical_name, ${term})
+              similarity(p.canonical_name, ${term}),
+              word_similarity(${term}, p.display_name),
+              word_similarity(${term}, p.canonical_name)
             )
           + CASE WHEN EXISTS (
               SELECT 1 FROM unnest(p.aliases) a
@@ -104,6 +106,8 @@ export class PostgresSearchProvider implements SearchProvider {
           p.search_vector @@ plainto_tsquery('simple', ${term})
           OR p.display_name ILIKE ${'%' + term + '%'}
           OR p.canonical_name % ${term}
+          OR word_similarity(${term}, p.display_name) > 0.35
+          OR word_similarity(${term}, p.canonical_name) > 0.35
           OR EXISTS (SELECT 1 FROM unnest(p.aliases) a WHERE a ILIKE ${'%' + term + '%'})
         )
         AND (
@@ -131,7 +135,7 @@ export class PostgresSearchProvider implements SearchProvider {
       SELECT
         la.id, la.display_name, la.slug, la.is_company,
         (
-          similarity(la.display_name, ${term})
+          GREATEST(similarity(la.display_name, ${term}), word_similarity(${term}, la.display_name))
           + CASE WHEN EXISTS (
               SELECT 1 FROM unnest(la.aliases) a WHERE a ILIKE ${'%' + term + '%'}
             ) THEN 0.5 ELSE 0 END
@@ -141,6 +145,7 @@ export class PostgresSearchProvider implements SearchProvider {
         AND (
           la.display_name ILIKE ${'%' + term + '%'}
           OR la.display_name % ${term}
+          OR word_similarity(${term}, la.display_name) > 0.35
           OR EXISTS (SELECT 1 FROM unnest(la.aliases) a WHERE a ILIKE ${'%' + term + '%'})
         )
       ORDER BY relevance DESC
@@ -161,10 +166,11 @@ export class PostgresSearchProvider implements SearchProvider {
     const rows = await this.prisma.$queryRaw<RawLocalityHit[]>(Prisma.sql`
       SELECT
         lo.id, lo.name, lo.slug, c.name AS city_name,
-        similarity(lo.name, ${term})::float8 AS relevance
+        GREATEST(similarity(lo.name, ${term}), word_similarity(${term}, lo.name))::float8 AS relevance
       FROM localities lo
       JOIN cities c ON c.id = lo.city_id
       WHERE lo.name ILIKE ${'%' + term + '%'} OR lo.name % ${term}
+        OR word_similarity(${term}, lo.name) > 0.35
       ORDER BY relevance DESC
       LIMIT ${limit}
     `);

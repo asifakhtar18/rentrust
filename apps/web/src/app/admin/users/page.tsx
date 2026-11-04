@@ -10,7 +10,7 @@ import { AdminHeader, Panel, TableLoading, TableError, TableEmpty, Th, Td } from
 import { cn } from '@/lib/cn';
 
 const PAGE_SIZE = 20;
-const AVAILABLE_ROLES = ['USER', 'OWNER', 'MANAGER', 'MODERATOR', 'ADMIN'] as const;
+const STAFF_ROLES: UserRole[] = ['MODERATOR', 'ADMIN'];
 
 export default function UsersPage() {
   const { request } = useAuth();
@@ -22,6 +22,7 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [savingUser, setSavingUser] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, UserRole[]>>({});
 
   const load = useCallback(
     async (p: number, q: string) => {
@@ -114,11 +115,22 @@ export default function UsersPage() {
                       <div className="flex flex-wrap gap-1">{u.roles.map((r) => (
                         <Badge key={r} tone={r === 'ADMIN' ? 'danger' : r === 'MODERATOR' ? 'warning' : 'neutral'}>{r}</Badge>
                       ))}</div>
-                      <select aria-label={`Roles for ${u.email}`} multiple value={u.roles} disabled={savingUser === u.id}
-                        onChange={(e) => void changeRoles(u, Array.from(e.currentTarget.selectedOptions, (option) => option.value as UserRole))}
-                        className="mt-2 min-w-32 rounded border border-border bg-background p-1 text-xs">
-                        {AVAILABLE_ROLES.map((role) => <option key={role} value={role}>{role}</option>)}
-                      </select>
+                      <details className="mt-2 basis-full">
+                        <summary className="cursor-pointer text-xs font-medium text-primary">Manage staff access</summary>
+                        <div className="mt-3 min-w-56 rounded-md border border-border bg-background p-3">
+                          <p className="mb-2 text-xs text-muted-foreground">Existing resident, owner, or manager roles are kept as-is.</p>
+                          {STAFF_ROLES.map((role) => {
+                            const roles = roleDrafts[u.id] ?? u.roles;
+                            return <label key={role} className="flex cursor-pointer items-start gap-2 py-1.5 text-xs text-foreground">
+                              <input type="checkbox" checked={roles.includes(role)} disabled={savingUser === u.id} onChange={(event) => setRoleDrafts((current) => ({ ...current, [u.id]: event.target.checked ? [...roles, role] : roles.filter((item) => item !== role) }))} className="mt-0.5 accent-primary" />
+                              <span><strong>{role === 'ADMIN' ? 'Administrator' : 'Moderator'}</strong><span className="mt-0.5 block text-muted-foreground">{role === 'ADMIN' ? 'Manage users, roles, catalogue, and staff settings.' : 'Review resident content and locality suggestions.'}</span></span>
+                            </label>;
+                          })}
+                          <Button size="sm" className="mt-2" disabled={savingUser === u.id || JSON.stringify(roleDrafts[u.id] ?? u.roles) === JSON.stringify(u.roles)} onClick={() => void changeRoles(u, [...u.roles.filter((role) => !STAFF_ROLES.includes(role)), ...(roleDrafts[u.id] ?? u.roles).filter((role) => STAFF_ROLES.includes(role)), 'USER'])}>
+                            {savingUser === u.id ? 'Saving…' : 'Save roles'}
+                          </Button>
+                        </div>
+                      </details>
                     </div>
                   </Td>
                   <Td>

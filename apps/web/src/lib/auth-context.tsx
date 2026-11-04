@@ -50,20 +50,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading: true,
   });
   const tokenRef = useRef<string | null>(null);
+  const authEpochRef = useRef(0);
+  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
   // -- internal helpers --
 
   /** Call the BFF refresh endpoint to get a new access token. */
   const silentRefresh = useCallback(async (): Promise<string | null> => {
-    try {
-      const res = await fetch('/api/auth/refresh', { method: 'POST' });
-      if (!res.ok) return null;
-      const body = await res.json();
-      tokenRef.current = body.accessToken ?? null;
-      return tokenRef.current;
-    } catch {
-      return null;
-    }
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
+    const epoch = authEpochRef.current;
+    const pending = (async () => {
+      try {
+        const res = await fetch('/api/auth/refresh', { method: 'POST' });
+        if (!res.ok) return null;
+        const body = await res.json();
+        const accessToken = body.accessToken ?? null;
+        if (authEpochRef.current !== epoch) return null;
+        tokenRef.current = accessToken;
+        return accessToken;
+      } catch {
+        return null;
+      }
+    })();
+    refreshPromiseRef.current = pending;
+    void pending.then(() => {
+      if (refreshPromiseRef.current === pending) refreshPromiseRef.current = null;
+    });
+    return pending;
   }, []);
 
   /** Fetch /auth/me using the current access token. */
@@ -84,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
+      const epoch = ++authEpochRef.current;
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,13 +114,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const body = await res.json();
       tokenRef.current = body.accessToken;
       const user = await fetchMe(body.accessToken);
-      setState({ user, loading: false });
+      if (authEpochRef.current === epoch) setState({ user, loading: false });
     },
     [fetchMe],
   );
 
   const register = useCallback(
     async (email: string, password: string, displayName?: string) => {
+      const epoch = ++authEpochRef.current;
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,18 +138,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const body = await res.json();
       if (body.verificationRequired) {
         tokenRef.current = null;
-        setState({ user: null, loading: false });
+        if (authEpochRef.current === epoch) setState({ user: null, loading: false });
         return true;
       }
       tokenRef.current = body.accessToken;
       const user = await fetchMe(body.accessToken);
-      setState({ user, loading: false });
+      if (authEpochRef.current === epoch) setState({ user, loading: false });
       return false;
     },
     [fetchMe],
   );
 
   const logout = useCallback(async () => {
+    ++authEpochRef.current;
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     tokenRef.current = null;
     setState({ user: null, loading: false });
@@ -202,10 +218,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // -- mount: attempt a silent refresh --
 
   useEffect(() => {
+    const epoch = authEpochRef.current;
     silentRefresh().then(async (token) => {
+      // A login/register/logout may finish while the initial refresh is in
+      // flight. Never let that older result overwrite the newer auth state.
+      if (authEpochRef.current !== epoch) return;
       if (token) {
         const user = await fetchMe(token);
-        setState({ user, loading: false });
+        if (authEpochRef.current === epoch) setState({ user, loading: false });
       } else {
         setState({ user: null, loading: false });
       }

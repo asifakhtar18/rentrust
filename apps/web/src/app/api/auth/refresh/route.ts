@@ -18,10 +18,9 @@ export async function POST() {
   const refreshToken = await readRefreshCookie();
 
   if (!refreshToken) {
-    return noStore(NextResponse.json(
-      { error: { code: 'NO_SESSION', message: 'No active session.' } },
-      { status: 401 },
-    ));
+    // An anonymous visitor is a normal state; 204 keeps the browser console
+    // clear while AuthProvider treats the empty response as no session.
+    return noStore(new NextResponse(null, { status: 204 }));
   }
 
   const { ok, status, data } = await backendAuth<
@@ -29,10 +28,14 @@ export async function POST() {
   >('/auth/refresh', { refreshToken });
 
   if (!ok) {
+    if (status === 401 || status === 403) {
+      const res = noStore(new NextResponse(null, { status: 204 }));
+      clearRefreshCookie(res);
+      return res;
+    }
     const res = noStore(NextResponse.json(data, { status }));
     // Keep the session cookie during an upstream outage so the client can retry.
-    // Clear it only when the backend has definitively rejected the session.
-    if (status === 401 || status === 403) clearRefreshCookie(res);
+    // Authentication failures are normalized above and clear the stale cookie.
     return res;
   }
 

@@ -6,22 +6,11 @@
 // ---- Enums (mirrors Prisma enums) ----
 
 export type PropertyType =
-  | 'APARTMENT'
-  | 'PG'
-  | 'CO_LIVING'
-  | 'HOSTEL'
-  | 'INDEPENDENT_HOUSE'
-  | 'VILLA'
-  | 'BUILDER_PROPERTY';
+  'APARTMENT' | 'PG' | 'CO_LIVING' | 'HOSTEL' | 'INDEPENDENT_HOUSE' | 'VILLA' | 'BUILDER_PROPERTY';
 
 export type UserRole = 'USER' | 'OWNER' | 'MANAGER' | 'MODERATOR' | 'ADMIN';
 
-export type TenureBucket =
-  | 'LT_3_MONTHS'
-  | 'M3_6'
-  | 'M6_12'
-  | 'Y1_2'
-  | 'GT_2_YEARS';
+export type TenureBucket = 'LT_3_MONTHS' | 'M3_6' | 'M6_12' | 'Y1_2' | 'GT_2_YEARS';
 
 export type TriState = 'YES' | 'NO' | 'MAYBE';
 
@@ -82,6 +71,7 @@ export interface Property {
   yearBuilt: number | null;
   amenities: string[];
   description: string | null;
+  googleMapsUrl: string | null;
   isClaimed: boolean;
   createdAt: string;
   updatedAt: string;
@@ -111,14 +101,16 @@ export interface TrustScore {
 // ---- Property detail ----
 
 export interface PropertyDetail extends Property {
+  images: PropertyImage[];
   address: {
     line1: string | null;
     line2: string | null;
     cityId: string;
     localityId: string | null;
     postalCode: string | null;
+    city?: { name: string; state?: { name: string }; country?: { name: string } };
   } | null;
-  locality: Locality | null;
+  locality: (Locality & { city?: { name: string; state?: { name: string }; country?: { name: string } } }) | null;
   score: TrustScore | null;
   landlords: Array<{
     id: string;
@@ -144,6 +136,12 @@ export interface PropertyDetail extends Property {
   reviewCount: number;
 }
 
+export interface PropertyImage {
+  id: string;
+  altText: string | null;
+  url: string;
+}
+
 // ---- Reviews ----
 
 export interface PublicReview {
@@ -166,13 +164,7 @@ export interface PublicReview {
 }
 
 export type ReviewStatus =
-  | 'DRAFT'
-  | 'PENDING_MODERATION'
-  | 'PUBLISHED'
-  | 'REJECTED'
-  | 'HIDDEN'
-  | 'UNDER_REVIEW'
-  | 'REMOVED';
+  'DRAFT' | 'PENDING_MODERATION' | 'PUBLISHED' | 'REJECTED' | 'HIDDEN' | 'UNDER_REVIEW' | 'REMOVED';
 
 /** A saved property row from /me/saved: public property + its score + savedAt. */
 export interface SavedProperty extends Property {
@@ -191,6 +183,7 @@ export interface MyReview {
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  property: { displayName: string; slug: string };
 }
 
 // ---- Search ----
@@ -219,7 +212,7 @@ export interface Locality {
 }
 
 export interface LocalityIntelligence {
-  locality: { id: string; name: string; slug: string };
+  locality: { id: string; name: string; slug: string; city?: { name: string; state: { name: string } } | null };
   propertyCount: number;
   scoredPropertyCount?: number;
   totalReviews?: number;
@@ -229,6 +222,33 @@ export interface LocalityIntelligence {
   categoryAverages?: Record<string, number>;
   commonPositiveThemes?: string[];
   commonComplaints?: string[];
+  areaExperience?: {
+    reviewCount: number;
+    overallAverage: number | null;
+    categoryAverages: Record<string, number>;
+  };
+}
+
+export interface PublicLocalityReview {
+  id: string;
+  localityId: string;
+  tenure: TenureBucket;
+  overall: number | null;
+  authorAlias: string;
+  ratings: Record<string, number> | null;
+  comments: string | null;
+  publishedAt: string | null;
+}
+
+export interface MyLocalityReview {
+  id: string;
+  localityId: string;
+  status: ReviewStatus;
+  tenure: TenureBucket;
+  overall: number | null;
+  createdAt: string;
+  publishedAt: string | null;
+  locality: { id: string; name: string };
 }
 
 // ---- Admin ----

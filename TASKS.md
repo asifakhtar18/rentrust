@@ -9,7 +9,7 @@
 
 **Status:** the NestJS/Next.js feature baseline is in place. The deployment target is Vercel for both frontend and API, Supabase PostgreSQL and Upstash Redis through Vercel integrations, and Cloudflare R2 only for private object storage. Deployment is pending repository connection, production-safe environment values, R2 setup, and preview integration checks.
 
-The app uses Next.js and NestJS on Vercel, Supabase PostgreSQL/PostGIS, Upstash Redis, and Cloudflare R2's S3-compatible API. Vercel Functions use inline trust-score recalculation and Redis-backed shared rate limiting; BullMQ remains for long-running Node deployments.
+The app uses Next.js and NestJS on Vercel, Supabase PostgreSQL/PostGIS, Upstash Redis, and Cloudflare R2's S3-compatible API for private files. Vercel Functions use inline trust-score recalculation and Redis-backed shared rate limiting; BullMQ remains for long-running Node deployments.
 
 ---
 
@@ -136,6 +136,6 @@ The app uses Next.js and NestJS on Vercel, Supabase PostgreSQL/PostGIS, Upstash 
 
 - Connect the GitHub repository to `rentrust-web` and `rentrust-api` in Vercel. This checkout has `origin` configured, but neither Vercel project has a deployment.
 - The API Vercel project already has Supabase pooled/direct database variables and Upstash `REDIS_URL` attached. Four migrations were applied to that Supabase database, and local `/health` and `/ready` returned 200 on 2026-11-03.
-- Resolve the hard zero-charge storage requirement before activating Cloudflare R2. R2's free quota allows billable overages, and Cloudflare documents budget alerts rather than a hard spending cap. The Cloudflare API currently returns error 10042 (“Please enable R2 through the Cloudflare Dashboard”). If R2 is accepted, create a private bucket and S3 credentials, then configure API environment values and bucket CORS for the web origin.
+- Resolve the hard zero-charge storage requirement before activating Cloudflare R2. R2's free quota allows billable overages and provides no hard spending cap. Provisioning previously returned error 10042 (“Please enable R2 through the dashboard”). If R2 is accepted, create a private bucket and S3 credentials, then configure API environment values and bucket CORS for the web origin.
 - Configure production JWT secrets, SMTP delivery, app URL, API CORS origins, and frontend API URL. Rotate the database password previously exposed in local logs before using it for a deployment.
 - Verify auth, email, file access, rate limiting, score updates, and frontend flows on a Vercel preview before production. The web project currently has no environment variables.

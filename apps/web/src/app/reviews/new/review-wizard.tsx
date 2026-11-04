@@ -98,7 +98,7 @@ export function ReviewWizard() {
           dislikedText: d.dislikedText || undefined, comments: d.comments || undefined,
         }),
       });
-      router.push(`/properties/${propertyId}`);
+        router.push('/profile?reviewSubmitted=1');
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Could not submit your review.');

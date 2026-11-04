@@ -28,11 +28,16 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={GeistMono.variable}>
+    <html lang="en" className={GeistMono.variable} suppressHydrationWarning>
       <body className="min-h-dvh font-sans antialiased">
         <Providers>
           <Navbar />
-          <main>{children}</main>
+          <a className="skip-link" href="#main-content">
+            Skip to content
+          </a>
+          <main id="main-content" tabIndex={-1}>
+            {children}
+          </main>
           <Footer />
         </Providers>
       </body>

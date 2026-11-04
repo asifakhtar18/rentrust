@@ -10,6 +10,12 @@ import {
   MinLength,
 } from 'class-validator';
 
+export class ResolveGoogleMapsDto {
+  @IsString()
+  @MaxLength(2048)
+  googleMapsUrl!: string;
+}
+
 export class CreateCityDto {
   @ApiProperty()
   @IsUUID()

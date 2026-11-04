@@ -43,6 +43,24 @@ enum UserStatus {
   DELETED
 }
 
+enum LocalitySuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PropertyContributionKind {
+  ADD_PROPERTY
+  EDIT_PROPERTY
+  ADD_PHOTO
+}
+
+enum PropertyContributionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum PropertyType {
   APARTMENT
   PG
@@ -217,6 +235,11 @@ model User {
   notifications   Notification[]
   authTokens      AuthToken[]
   auditLogs       AuditLog[]            @relation("ActorAudit")
+  localitySuggestions LocalitySuggestion[] @relation("LocalitySuggestionSubmitter")
+  reviewedLocalitySuggestions LocalitySuggestion[] @relation("LocalitySuggestionReviewer")
+  propertyContributions PropertyContribution[] @relation("PropertyContributionSubmitter")
+  reviewedPropertyContributions PropertyContribution[] @relation("PropertyContributionReviewer")
+  localityReviews LocalityReview[]
 
   @@index([status])
   @@index([createdAt])
@@ -322,6 +345,7 @@ model City {
   state            State             @relation(fields: [stateId], references: [id])
   country          Country           @relation(fields: [countryId], references: [id])
   localities       Locality[]
+  localitySuggestions LocalitySuggestion[]
   addresses        Address[]
   residentProfiles ResidentProfile[]
 
@@ -344,10 +368,38 @@ model Locality {
   city       City       @relation(fields: [cityId], references: [id])
   addresses  Address[]
   properties Property[]
+  reviews    LocalityReview[]
 
   @@unique([cityId, name])
   @@index([cityId])
   @@map("localities")
+}
+
+/// Community-submitted neighbourhood candidates awaiting staff review.
+model LocalitySuggestion {
+  id              String                   @id @default(uuid()) @db.Uuid
+  cityId          String                   @map("city_id") @db.Uuid
+  submitterId     String                   @map("submitter_id") @db.Uuid
+  name            String                   @db.VarChar(120)
+  normalizedName  String                   @map("normalized_name") @db.VarChar(120)
+  description     String?                  @db.VarChar(2000)
+  latitude        Float?
+  longitude       Float?
+  googleMapsUrl   String?                  @map("google_maps_url") @db.VarChar(2048)
+  status          LocalitySuggestionStatus @default(PENDING)
+  reviewerId      String?                  @map("reviewer_id") @db.Uuid
+  moderatorNote   String?                  @map("moderator_note") @db.VarChar(1000)
+  reviewedAt      DateTime?                @map("reviewed_at")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @updatedAt @map("updated_at")
+
+  city      City  @relation(fields: [cityId], references: [id], onDelete: Cascade)
+  submitter User  @relation("LocalitySuggestionSubmitter", fields: [submitterId], references: [id], onDelete: Cascade)
+  reviewer  User? @relation("LocalitySuggestionReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([cityId, createdAt])
+  @@map("locality_suggestions")
 }
 
 model Address {
@@ -439,6 +491,7 @@ model Property {
   yearBuilt     Int?           @map("year_built")
   amenities     String[]       @default([])
   description   String?
+  googleMapsUrl String?        @map("google_maps_url") @db.VarChar(2048)
   // Set when status = MERGED: the surviving canonical property.
   mergedIntoId  String?        @map("merged_into_id") @db.Uuid
   isClaimed     Boolean        @default(false) @map("is_claimed")
@@ -458,6 +511,8 @@ model Property {
   score      PropertyScore?
   claims     PropertyClaim[]
   savedBy    SavedProperty[]
+  images     PropertyImage[]
+  contributions PropertyContribution[]
 
   @@index([canonicalName])
   @@index([propertyType])
@@ -465,6 +520,46 @@ model Property {
   @@index([localityId])
   @@index([latitude, longitude])
   @@map("properties")
+}
+
+/// Resident-submitted property additions, corrections, and photo suggestions.
+/// Contributions are private until an administrator reviews them.
+model PropertyContribution {
+  id           String                   @id @default(uuid()) @db.Uuid
+  submitterId  String                   @map("submitter_id") @db.Uuid
+  propertyId   String?                  @map("property_id") @db.Uuid
+  kind         PropertyContributionKind
+  payload      Json
+  status       PropertyContributionStatus @default(PENDING)
+  reviewerId   String?                  @map("reviewer_id") @db.Uuid
+  moderatorNote String?                 @map("moderator_note") @db.VarChar(1000)
+  reviewedAt   DateTime?                @map("reviewed_at")
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
+
+  submitter User      @relation("PropertyContributionSubmitter", fields: [submitterId], references: [id], onDelete: Cascade)
+  reviewer  User?     @relation("PropertyContributionReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  property  Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([submitterId, createdAt])
+  @@index([propertyId, createdAt])
+  @@map("property_contributions")
+}
+
+/// Publicly visible property photos stored as objects; bytes stay outside the API.
+model PropertyImage {
+  id          String   @id @default(uuid()) @db.Uuid
+  propertyId  String   @map("property_id") @db.Uuid
+  storageKey  String   @unique @map("storage_key")
+  contentType String   @map("content_type")
+  altText     String?  @map("alt_text")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId, createdAt])
+  @@map("property_images")
 }
 
 model PropertyUnit {
@@ -598,6 +693,45 @@ model ReviewAnswer {
   review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
   @@map("review_answers")
+}
+
+/// A community report about the neighbourhood itself, separate from a rental property's review.
+model LocalityReview {
+  id          String       @id @default(uuid()) @db.Uuid
+  localityId  String       @map("locality_id") @db.Uuid
+  authorId    String       @map("author_id") @db.Uuid
+  status      ReviewStatus @default(PENDING_MODERATION)
+  tenure      TenureBucket
+  overall     Float?
+  publishedAt DateTime?    @map("published_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+
+  locality Locality              @relation(fields: [localityId], references: [id], onDelete: Cascade)
+  author   User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  answer   LocalityReviewAnswer?
+
+  @@index([localityId, status, publishedAt])
+  @@index([authorId, createdAt])
+  @@map("locality_reviews")
+}
+
+model LocalityReviewAnswer {
+  id                String  @id @default(uuid()) @db.Uuid
+  reviewId          String  @unique @map("review_id") @db.Uuid
+  municipalServices Int     @map("municipal_services")
+  publicTransport   Int     @map("public_transport")
+  healthcareAccess  Int     @map("healthcare_access")
+  foodAndGroceries  Int     @map("food_and_groceries")
+  safety            Int
+  cleanliness       Int
+  neighbourliness  Int
+  comments          String? @db.VarChar(2000)
+
+  review LocalityReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@map("locality_review_answers")
 }
 
 // ---------------------------- Verification ----------------------------------

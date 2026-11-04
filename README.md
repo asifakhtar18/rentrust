@@ -122,7 +122,8 @@ Use two Vercel projects:
 
 1. `rentrust-web` with root directory `apps/web`.
 2. `rentrust-api` with root directory `apps/api`, Node.js 22, and the API
-   project's Supabase and Upstash integrations.
+   project's Supabase and Upstash integrations. Vercel recognizes the NestJS
+   entrypoint at `src/main.ts` and runs the API as a Vercel Function.
 
 The NestJS API entrypoint is `apps/api/src/app.ts`. Set
 `NEXT_PUBLIC_API_BASE_URL` in the web project to the API deployment URL followed
