@@ -143,7 +143,11 @@ function ResultRow({ hit }: { hit: SearchHit }) {
   const Icon = hit.type === 'property' ? Building2 : hit.type === 'locality' ? MapPin : User;
 
   return (
-    <Link href={href} className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-muted/60">
+    <Link
+      href={href}
+      prefetch={hit.type === 'property' ? false : undefined}
+      className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-muted/60"
+    >
       <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
         <Icon className="size-5" aria-hidden />
       </span>

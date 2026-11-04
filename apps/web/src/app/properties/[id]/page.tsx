@@ -15,17 +15,57 @@ import { PropertyImages } from '@/components/property/property-images';
 export const dynamic = 'force-dynamic';
 
 async function getData(id: string) {
+  let detail: PropertyDetail;
   try {
-    const [detail, score, reviews] = await Promise.all([
-      apiFetch<PropertyDetail>(`/properties/${id}`),
-      apiFetch<TrustScoreT>(`/properties/${id}/score`),
-      apiFetch<PublicReview[]>(`/properties/${id}/reviews?limit=20`),
-    ]);
-    return { detail: detail.data, score: score.data, reviews: reviews.data };
+    const result = await apiFetch<PropertyDetail>(`/properties/${encodeURIComponent(id)}`);
+    detail = result.data;
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     throw err;
   }
+
+  // A score or review outage should not make the whole property profile
+  // unusable. The property record is the critical request; the other two
+  // sections can show their existing empty states while they recover.
+  const [scoreResult, reviewsResult] = await Promise.allSettled([
+    apiFetch<TrustScoreT>(`/properties/${encodeURIComponent(id)}/score`),
+    apiFetch<PublicReview[]>(`/properties/${encodeURIComponent(id)}/reviews?limit=20`),
+  ]);
+
+  const score =
+    scoreResult.status === 'fulfilled' && scoreResult.value.data
+      ? scoreResult.value.data
+      : (detail.score ?? {
+          propertyId: detail.id,
+          hasEnoughData: false,
+          message: 'Trust scores are temporarily unavailable. Please check back soon.',
+          overall: null,
+          sampleSize: 0,
+          confidence: 0,
+          categoryScores: {},
+          positiveThemes: [],
+          negativeThemes: [],
+          lastCalculatedAt: null,
+        });
+
+  return {
+    detail: {
+      ...detail,
+      amenities: Array.isArray(detail.amenities) ? detail.amenities : [],
+      images: Array.isArray(detail.images) ? detail.images : [],
+      reviewCount: Number.isFinite(detail.reviewCount) ? detail.reviewCount : 0,
+    },
+    score: {
+      ...score,
+      categoryScores: score.categoryScores ?? {},
+      positiveThemes: score.positiveThemes ?? [],
+      negativeThemes: score.negativeThemes ?? [],
+    },
+    reviews:
+      reviewsResult.status === 'fulfilled' && Array.isArray(reviewsResult.value.data)
+        ? reviewsResult.value.data
+        : [],
+  };
 }
 
 export default async function PropertyPage({ params }: { params: { id: string } }) {

@@ -69,7 +69,7 @@ export default async function LocalityPage({ params }: { params: { id: string } 
         <h1 className="mt-2 t-page-title text-foreground">{intel.locality.name}</h1>
         <p className="mt-1.5 flex items-center gap-1.5 t-callout text-muted-foreground">
           <MapPin className="size-4" aria-hidden />
-          {[intel.locality.city?.name, intel.locality.city?.state.name].filter(Boolean).join(', ')}
+          {[intel.locality.city?.name, intel.locality.city?.state?.name].filter(Boolean).join(', ')}
           {intel.locality.city && ' · '}{intel.propertyCount} {intel.propertyCount === 1 ? 'property' : 'properties'} tracked
         </p>
       </div>
