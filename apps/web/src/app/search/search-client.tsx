@@ -10,7 +10,7 @@ import { PROPERTY_TYPE_LABELS } from '@/lib/labels';
 import { cn } from '@/lib/cn';
 import { SearchBar } from '@/components/search/search-bar';
 import { Card, EmptyState } from '@/components/ui/primitives';
-import { Button } from '@/components/ui/button';
+import { Button, LinkButton } from '@/components/ui/button';
 
 type Filter = 'all' | 'property' | 'landlord' | 'locality';
 const FILTERS: { key: Filter; label: string }[] = [
@@ -99,7 +99,30 @@ export function SearchClient() {
         ) : hits.length === 0 ? (
           <EmptyState
             title={`No matches for “${q}”`}
-            body="Try a different spelling or a nearby locality."
+            body="If the place is missing, you can add it for other renters. We check suggestions before they appear."
+            action={
+              <div className="flex flex-wrap justify-center gap-2">
+                {filter !== 'landlord' && (
+                  <LinkButton
+                    href={`/properties/suggest?name=${encodeURIComponent(q)}`}
+                    size="sm"
+                  >
+                    <Building2 className="size-4" aria-hidden />
+                    Suggest this property
+                  </LinkButton>
+                )}
+                {filter !== 'property' && (
+                  <LinkButton
+                    href={`/locations/suggest?name=${encodeURIComponent(q)}`}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    <MapPin className="size-4" aria-hidden />
+                    Suggest this area
+                  </LinkButton>
+                )}
+              </div>
+            }
           />
         ) : (
           <Card className="divide-y divide-border overflow-hidden" elevated>

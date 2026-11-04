@@ -171,6 +171,11 @@
   50% { transform: translateX(5px); opacity: 0.95; }
 }
 .window-light { animation: light-shift 6s ease-in-out infinite; }
+@keyframes nudge-arrow {
+  0%, 100% { transform: translateX(0); }
+  45% { transform: translateX(4px); }
+}
+.nudge-arrow { animation: nudge-arrow 1.2s ease-in-out 3; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

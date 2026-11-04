@@ -73,6 +73,11 @@ export default function SuggestPropertyPage() {
   }, []);
 
   useEffect(() => {
+    const suggestedName = new URLSearchParams(window.location.search).get('name')?.trim();
+    if (suggestedName) setName((current) => current || suggestedName.slice(0, 200));
+  }, []);
+
+  useEffect(() => {
     if (name.trim().length < 3) {
       setCandidates([]);
       return;

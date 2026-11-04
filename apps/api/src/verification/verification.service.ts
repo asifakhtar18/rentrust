@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { VerificationRequest, VerificationStatus } from '@prisma/client';
+import { Prisma, VerificationRequest, VerificationStatus } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { PropertiesService } from '../properties/properties.service';
 import {
@@ -172,7 +172,7 @@ export class VerificationService {
       );
     }
 
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const result = await tx.verificationRequest.update({
         where: { id },
         data: {

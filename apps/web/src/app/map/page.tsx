@@ -17,13 +17,16 @@ export default function MapPage() {
             the map area currently in view.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <LinkButton href="/search" variant="secondary" size="sm">
             Search listings
           </LinkButton>
           <LinkButton href="/properties/suggest" size="sm">
             <MapPin className="size-4" aria-hidden />
             Suggest a property
+          </LinkButton>
+          <LinkButton href="/locations/suggest" variant="secondary" size="sm">
+            Add a neighbourhood
           </LinkButton>
         </div>
       </div>

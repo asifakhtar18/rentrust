@@ -154,7 +154,7 @@ export default async function PropertyPage({ params }: { params: { id: string } 
         {reviews.length === 0 ? (
           <EmptyState
             title="No reviews yet"
-            body="If you've lived here, share your experience to help the next renter."
+            body="Lived here? A few honest ratings can help the next renter know what to ask. Your review appears under an anonymous alias, and a written note is optional."
             action={
               <LinkButton href={`/reviews/new?propertyId=${detail.id}`} size="sm">
                 Write the first review

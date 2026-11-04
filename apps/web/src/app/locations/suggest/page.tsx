@@ -95,6 +95,11 @@ export default function SuggestLocalityPage() {
     void reloadCatalog();
   }, [catalogAttempt, reloadCatalog]);
 
+  useEffect(() => {
+    const suggestedName = new URLSearchParams(window.location.search).get('name')?.trim();
+    if (suggestedName) setName((current) => current || suggestedName.slice(0, 120));
+  }, []);
+
   function setCoordinatesFromLocation(coordinates: Coordinates) {
     setLatitude(coordinates.latitude);
     setLongitude(coordinates.longitude);

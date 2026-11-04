@@ -192,12 +192,22 @@ export default async function LocalityPage({ params }: { params: { id: string } 
 
       {/* ── Properties in this locality ── */}
       <div className="mt-10">
-        <h2 className="t-section-title text-foreground">Properties in {intel.locality.name}</h2>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="t-section-title text-foreground">Properties in {intel.locality.name}</h2>
+            <p className="mt-1 t-meta">Know a home that should be listed here? Add it for the next renter.</p>
+          </div>
+          <LinkButton href="/properties/suggest" size="sm">
+            <Building2 className="size-4" aria-hidden />
+            Add a property
+          </LinkButton>
+        </div>
         <div className="mt-4">
           {properties.length === 0 ? (
             <EmptyState
-              title="No properties listed here yet"
-              body="This locality doesn't have any tracked properties right now."
+              title="Be the first to add a home"
+              body={`There are no tracked properties in ${intel.locality.name} yet. A name and map link are enough to get started.`}
+              action={<LinkButton href="/properties/suggest" size="sm"><Building2 className="size-4" aria-hidden />Add the first property</LinkButton>}
             />
           ) : (
             <Card elevated className="divide-y divide-border overflow-hidden">

@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2, ShieldCheck, Mail, FileText, LogOut, Lock, KeyRound, MapPin } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -29,6 +30,22 @@ const CLAIM_STATUS_META: Record<ClaimStatus, { label: string; tone: 'neutral' | 
 };
 
 export default function ProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <Section className="py-20">
+          <div className="flex items-center gap-2 t-meta">
+            <Loader2 className="size-4 animate-spin text-primary" /> Loading…
+          </div>
+        </Section>
+      }
+    >
+      <ProfileContent />
+    </Suspense>
+  );
+}
+
+function ProfileContent() {
   const { user, loading: authLoading, request, logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();

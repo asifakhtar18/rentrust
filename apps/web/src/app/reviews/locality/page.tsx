@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { Suspense, useState, type FormEvent } from 'react';
 import { ArrowLeft, MapPin } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { Button, LinkButton } from '@/components/ui/button';
@@ -28,6 +28,20 @@ const EMPTY: Draft = {
 const TENURES: TenureBucket[] = ['LT_3_MONTHS', 'M3_6', 'M6_12', 'Y1_2', 'GT_2_YEARS'];
 
 export default function LocalityReviewPage() {
+  return (
+    <Suspense
+      fallback={
+        <Section className="py-16">
+          <p role="status" className="t-meta">Loading neighbourhood review…</p>
+        </Section>
+      }
+    >
+      <LocalityReviewForm />
+    </Suspense>
+  );
+}
+
+function LocalityReviewForm() {
   const params = useSearchParams();
   const router = useRouter();
   const localityId = params.get('localityId') ?? '';

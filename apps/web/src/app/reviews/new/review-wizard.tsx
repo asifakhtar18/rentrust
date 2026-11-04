@@ -130,6 +130,12 @@ export function ReviewWizard() {
             Reviewing <span className="font-medium text-foreground">{property.displayName}</span> · {PROPERTY_TYPE_LABELS[property.propertyType]}
           </p>
         )}
+        {step === 0 && (
+          <p className="mt-3 flex items-start gap-2 rounded-md border border-primary/15 bg-primary/[0.04] px-3 py-2.5 t-helper">
+            <Lock className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden />
+            A few honest ratings are useful on their own. Your review appears under an anonymous alias, and the written note is optional.
+          </p>
+        )}
       </div>
 
       <Card className="p-6" elevated key={step}>
